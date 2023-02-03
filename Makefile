@@ -10,7 +10,7 @@ dist/favicon.ico:
 dist/index.html: src/index.html dist/frontend-js.js dist/frontend-elm.js dist/backend-js.js dist/backend-elm.js
 	cp src/index.html dist/index.html
 
-dist/%-js.js: src/%.ts
+dist/%-js.js: src/%.js
 	mkdir -p dist
 	cp $^ $@
 

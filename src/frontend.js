@@ -10,10 +10,6 @@
 
   var pool = Array();
 
-  for (let index = 0; index < workersCount; index++) {
-    pool.push(new Worker("./backend-js.js"));
-  }
-
   // @ts-ignore
   const Frontend = Elm.Frontend;
 
@@ -23,12 +19,15 @@
   });
 
   app.ports.toBackend.subscribe(function ({ index, value }) {
+    var worker;
+    if (index in pool) {
+      worker = pool[index];
+    } else {
+      worker = pool[index] = new Worker("./backend-js.js");
+      worker.onmessage = function ({ data }) {
+        app.ports.fromBackend.send(data);
+      };
+    }
     pool[index].postMessage(value);
-  });
-
-  pool.forEach((worker) => {
-    worker.onmessage = function ({ data }) {
-      app.ports.fromBackend.send(data);
-    };
   });
 }
