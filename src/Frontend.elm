@@ -21,6 +21,7 @@ type alias Model =
 
 type Msg
     = FromBackend ToFrontend
+    | Stop
     | Nop
 
 
@@ -65,6 +66,13 @@ update msg model =
         FromBackend (TFParams params) ->
             ( { model | params = Just params }, Cmd.none )
 
+        Stop ->
+            ( model
+            , List.range 0 (model.workersCount - 1)
+                |> List.map terminate
+                |> Cmd.batch
+            )
+
         Nop ->
             ( model, Cmd.none )
 
@@ -76,6 +84,9 @@ subscriptions _ =
 
 
 -- PORTS --
+
+
+port terminate : Int -> Cmd msg
 
 
 port fromBackend : (Value -> msg) -> Sub msg
