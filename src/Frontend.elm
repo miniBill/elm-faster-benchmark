@@ -21,6 +21,7 @@ type alias Model =
 
 type Msg
     = FromBackend ToFrontend
+    | Warm
     | Stop
     | Nop
 
@@ -57,6 +58,14 @@ view model =
 
             Just lst ->
                 text <| "Will run with " ++ String.fromInt (List.length lst) ++ " params"
+        , Theme.button []
+            { label = text "Start all workers"
+            , onPress = Just Warm
+            }
+        , Theme.button []
+            { label = text "Terminate all workers"
+            , onPress = Just Stop
+            }
         ]
 
 
@@ -65,6 +74,13 @@ update msg model =
     case msg of
         FromBackend (TFParams params) ->
             ( { model | params = Just params }, Cmd.none )
+
+        Warm ->
+            ( model
+            , List.range 0 (model.workersCount - 1)
+                |> List.map (\i -> sendToBackend i TBNop)
+                |> Cmd.batch
+            )
 
         Stop ->
             ( model

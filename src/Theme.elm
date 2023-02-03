@@ -1,6 +1,8 @@
-module Theme exposing (padding, rythm, spacing)
+module Theme exposing (button, padding, rythm, spacing)
 
-import Element exposing (Attribute)
+import Element exposing (Attribute, Element)
+import Element.Border as Border
+import Element.Input as Input
 
 
 rythm : number
@@ -16,3 +18,14 @@ spacing =
 padding : Attribute msg
 padding =
     Element.padding rythm
+
+
+button :
+    List (Attribute msg)
+    ->
+        { label : Element msg
+        , onPress : Maybe msg
+        }
+    -> Element msg
+button attrs =
+    Input.button (Border.width 1 :: Border.rounded rythm :: padding :: attrs)

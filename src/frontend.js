@@ -16,7 +16,9 @@
     if (index in pool) {
       worker = pool[index];
     } else {
-      worker = pool[index] = new Worker("./backend-js.js");
+      worker = pool[index] = new Worker("./backend-js.js", {
+        name: `Worker ${index}`
+      });
       worker.onmessage = function ({ data }) {
         app.ports.fromBackend.send(data);
       };

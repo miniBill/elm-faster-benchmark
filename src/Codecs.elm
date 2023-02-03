@@ -19,10 +19,14 @@ toFrontendCodec =
 toBackendCodec : Codec ToBackend
 toBackendCodec =
     Codec.custom
-        (\params value ->
+        (\params nop value ->
             case value of
                 TBParams ->
                     params
+
+                TBNop ->
+                    nop
         )
         |> Codec.variant0 "TBParams" TBParams
+        |> Codec.variant0 "TBNop" TBNop
         |> Codec.buildCustom

@@ -38,6 +38,9 @@ update msg model =
         FromFrontend TBParams ->
             ( model, sendToFrontend <| TFParams [ Codec.encodeToValue Codec.int 0 ] )
 
+        FromFrontend TBNop ->
+            ( model, Cmd.none )
+
         Nop ->
             ( model, Cmd.none )
 
