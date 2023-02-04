@@ -250,29 +250,6 @@ viewGraph graphName graph =
     column [ Theme.spacing ]
         [ text graphName
         , linePlot
-        , graph
-            |> Dict.toList
-            |> List.map
-                (\( functionName, _ ) ->
-                    let
-                        rgba : { red : Float, green : Float, blue : Float, alpha : Float }
-                        rgba =
-                            Color.toRgba (toColor functionName)
-                    in
-                    row []
-                        [ el
-                            [ Background.color <|
-                                Element.rgb rgba.red rgba.green rgba.blue
-                            , width <| px 10
-                            , height <| px 10
-                            , centerY
-                            ]
-                            Element.none
-                        , text " "
-                        , text functionName
-                        ]
-                )
-            |> column []
         , viewTable graph toColor
         ]
 
