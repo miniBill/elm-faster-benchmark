@@ -1,4 +1,4 @@
-module ToBenchmark exposing (Function(..), Graph(..), config)
+module ToBenchmark exposing (Function, Graph, config)
 
 import Codec exposing (Codec)
 import Common.Types exposing (Config)
