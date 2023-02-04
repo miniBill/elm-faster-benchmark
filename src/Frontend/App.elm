@@ -337,7 +337,7 @@ formatFloat f =
         rounded =
             round (f * 100)
     in
-    String.fromInt (rounded // 100) ++ "." ++ String.fromInt (modBy 100 rounded)
+    String.fromInt (rounded // 100) ++ "." ++ String.pad 2 '0' (String.fromInt (modBy 100 rounded))
 
 
 update : Config graph function -> Ports (Msg graph function) -> Msg graph function -> Model graph function -> ( Model graph function, Cmd (Msg graph function) )
