@@ -3,12 +3,13 @@ port module Frontend exposing (Flags, Model, Msg, RunStatus, main)
 import Benchmark.Parametric exposing (Stats)
 import Browser
 import Codec exposing (Value)
-import Color exposing (Color)
+import Color
 import Deque exposing (Deque)
 import Dict exposing (Dict)
 import Element exposing (Element, centerY, column, el, height, px, row, text, width, wrappedRow)
 import Element.Background as Background
 import LinePlot
+import OkLch
 import Theme
 import ToBenchmark
 import Types exposing (Index, Param, ToBackend(..), ToFrontend(..))
@@ -182,15 +183,30 @@ resultsCount results =
         results
 
 
-colors : List Color
-colors =
-    [ Color.blue
-    , Color.red
-    ]
-
-
 viewResults : Results -> Element Msg
 viewResults results =
+    let
+        colorCount : Int
+        colorCount =
+            results
+                |> Dict.foldl (\_ graph -> max (Dict.size graph)) 0
+
+        colors : List Color.Color
+        colors =
+            List.range 0 (colorCount - 1)
+                |> List.map
+                    (\i ->
+                        let
+                            ( r, g, b ) =
+                                OkLch.oklchToSRGB
+                                    ( 0.75
+                                    , 0.126
+                                    , toFloat i * 360 / toFloat colorCount
+                                    )
+                        in
+                        Color.rgb r g b
+                    )
+    in
     results
         |> Dict.toList
         |> List.map
@@ -199,7 +215,11 @@ viewResults results =
                     [ text graphName
                     , graph
                         |> Dict.toList
-                        |> List.map2 (\color ( _, data ) -> ( color, data )) colors
+                        |> List.map2
+                            (\color ( _, data ) ->
+                                ( color, data )
+                            )
+                            colors
                         |> LinePlot.view
                         |> Element.html
                         |> el []

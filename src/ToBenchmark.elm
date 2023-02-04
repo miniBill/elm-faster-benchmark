@@ -65,8 +65,7 @@ graphs =
 functions : List Function
 functions =
     [ FastFibonacci
-
-    -- , SlowFibonacci
+    , SlowFibonacci
     ]
 
 

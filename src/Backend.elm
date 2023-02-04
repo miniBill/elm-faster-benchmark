@@ -3,7 +3,6 @@ port module Backend exposing (Flags, Model, Msg, main)
 import Benchmark.LowLevel
 import Benchmark.Parametric
 import Codec exposing (Value)
-import Codecs
 import List.Extra
 import Task
 import ToBenchmark
@@ -111,14 +110,14 @@ port toFrontend : Value -> Cmd msg
 
 sendToFrontend : ToFrontend -> Cmd msg
 sendToFrontend tf =
-    toFrontend (Codec.encodeToValue Codecs.toFrontendCodec tf)
+    toFrontend (Codec.encodeToValue Types.toFrontendCodec tf)
 
 
 receiveFromFrontend : Sub Msg
 receiveFromFrontend =
     fromFrontend
         (\value ->
-            case Codec.decodeValue Codecs.toBackendCodec value of
+            case Codec.decodeValue Types.toBackendCodec value of
                 Ok decoded ->
                     FromFrontend decoded
 
