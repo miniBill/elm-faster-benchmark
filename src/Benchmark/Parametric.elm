@@ -1,4 +1,27 @@
-module Benchmark.Parametric exposing (Stats, computeStatistics, run, statsCodec)
+module Benchmark.Parametric exposing
+    ( run
+    , Stats, computeStatistics
+    , statsCodec
+    )
+
+{-|
+
+
+# Run tests
+
+@docs run
+
+
+# Calculate statistics
+
+@docs Stats, computeStatistics
+
+
+# Codec
+
+@docs statsCodec
+
+-}
 
 import Benchmark.LowLevel exposing (Operation)
 import Codec exposing (Codec)
@@ -6,6 +29,8 @@ import Statistics
 import Task exposing (Task)
 
 
+{-| Runs a given `Operation` and returns up to 100 timings (in ms).
+-}
 run : Operation -> Task String (List Float)
 run operation =
     Benchmark.LowLevel.warmup operation
@@ -24,6 +49,7 @@ run operation =
                 List.range 0 batchCount
                     |> List.map (\_ -> Benchmark.LowLevel.sample batchSize operation)
                     |> Task.sequence
+                    |> Task.map (List.map (\totalDuration -> totalDuration / toFloat batchSize))
             )
         |> Task.mapError
             (\e ->
@@ -117,6 +143,8 @@ splitWhen f orig =
     go [] orig
 
 
+{-| The `Maybe a` is the last element which makes the function true
+-}
 findLastSuchThat : (a -> Bool) -> List a -> ( Maybe a, List a )
 findLastSuchThat f orig =
     let
