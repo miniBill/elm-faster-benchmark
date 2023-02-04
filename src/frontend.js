@@ -24,7 +24,7 @@
       name: `Worker ${index}`
     })
     worker.onmessage = function ({ data }) {
-      app.ports.fromBackend.send(data);
+      app.ports.fromBackend.send({ index, data });
     }
     pool[index] = worker
     return worker
@@ -38,16 +38,14 @@
     flags: { workersCount: workersCount },
   })
 
-  app.ports.toBackend.subscribe(function ({ index, value }) {
+  app.ports.toBackend.subscribe(function ({ index, data }) {
     /** @type {Worker} */
     var worker = getWorker(index);
-    worker.postMessage(value);
+    worker.postMessage(data);
   })
 
-  app.ports.terminate.subscribe(function (index) {
-    if (index in pool) {
-      pool[index].terminate()
-      delete pool[index]
-    }
+  app.ports.terminateAll.subscribe(function (index) {
+    pool.forEach(worker => worker.terminate())
+    pool = Array()
   })
 }

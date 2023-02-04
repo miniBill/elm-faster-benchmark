@@ -1,12 +1,43 @@
-module Types exposing (ToBackend(..), ToFrontend(..))
+module Types exposing (Function(..), GraphName, Index, Param, ToBackend(..), ToFrontend(..), functionToString)
 
-import Codec exposing (Value)
+import Benchmark.Parametric exposing (Stats)
 
 
 type ToFrontend
-    = TFParams (List Value)
+    = TFParams (List Param)
+    | TFResult Param (Result String Stats)
 
 
 type ToBackend
     = TBParams
-    | TBNop
+    | TBParam Param
+
+
+type alias Index =
+    Int
+
+
+type alias Param =
+    { graphName : GraphName
+    , function : Function
+    , size : Int
+    }
+
+
+type alias GraphName =
+    String
+
+
+type Function
+    = SlowFibonacci
+    | FastFibonacci
+
+
+functionToString : Function -> String
+functionToString function =
+    case function of
+        SlowFibonacci ->
+            "Slow"
+
+        FastFibonacci ->
+            "Fast"

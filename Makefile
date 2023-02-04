@@ -2,7 +2,14 @@
 all: dist/index.html dist/favicon.ico
 
 ELM_FILES = $(shell find src -type f -name '*.elm')
-ELM = elm # elm-optimize-level-2
+# ELM = elm
+# ELM_FLAGS = --debug
+
+# ELM = elm
+# ELM_FLAGS = --optimize
+
+ELM = elm-optimize-level-2
+ELM_FLAGS =
 
 dist/favicon.ico:
 	touch $@
@@ -16,8 +23,8 @@ dist/%-js.js: src/%.js
 
 dist/frontend-elm.js: $(ELM_FILES)
 	mkdir -p dist
-	$(ELM) make src/Frontend.elm --output=$@
+	$(ELM) $(ELM_FLAGS) make src/Frontend.elm --output=$@
 
 dist/backend-elm.js: $(ELM_FILES)
 	mkdir -p dist
-	$(ELM) make src/Backend.elm --output=$@
+	$(ELM) $(ELM_FLAGS) make src/Backend.elm --output=$@

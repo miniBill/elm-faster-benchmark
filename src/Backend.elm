@@ -1,8 +1,77 @@
 port module Backend exposing (Flags, Model, Msg, main)
 
+import Benchmark.LowLevel
+import Benchmark.Parametric
 import Codec exposing (Value)
 import Codecs
-import Types exposing (ToBackend(..), ToFrontend(..))
+import Task
+import Types exposing (Function(..), GraphName, Param, ToBackend(..), ToFrontend(..))
+
+
+params : List Param
+params =
+    let
+        graphNames : List GraphName
+        graphNames =
+            [ "Simple graph" ]
+
+        functions : List Function
+        functions =
+            [ SlowFibonacci, FastFibonacci ]
+
+        sizes : List Int
+        sizes =
+            List.range 1 100
+    in
+    graphNames
+        |> List.concatMap
+            (\graphName ->
+                sizes
+                    |> List.concatMap
+                        (\size ->
+                            functions
+                                |> List.map
+                                    (\function ->
+                                        { graphName = graphName
+                                        , function = function
+                                        , size = size
+                                        }
+                                    )
+                        )
+            )
+
+
+toFunction : Function -> (Int -> ())
+toFunction function =
+    case function of
+        SlowFibonacci ->
+            ignore << fibSlow
+
+        FastFibonacci ->
+            ignore << fibFast
+
+
+ignore : a -> ()
+ignore _ =
+    ()
+
+
+fibSlow : Int -> Int
+fibSlow n =
+    if n < 2 then
+        1
+
+    else
+        fibSlow (n - 1) + fibSlow (n - 2)
+
+
+fibFast : Int -> Int
+fibFast n =
+    List.range 2 n
+        |> List.foldl
+            (\_ ( high, low ) -> ( high + low, high ))
+            ( 1, 1 )
+        |> Tuple.first
 
 
 type alias Flags =
@@ -15,6 +84,7 @@ type alias Model =
 
 type Msg
     = FromFrontend ToBackend
+    | RunResult Param (Result String (List Float))
     | Nop
 
 
@@ -22,7 +92,7 @@ main : Program Flags Model Msg
 main =
     Platform.worker
         { init = init
-        , update = update
+        , update = \msg model -> ( model, toCmd msg )
         , subscriptions = subscriptions
         }
 
@@ -32,17 +102,42 @@ init _ =
     ( {}, Cmd.none )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+toCmd : Msg -> Cmd Msg
+toCmd msg =
     case msg of
         FromFrontend TBParams ->
-            ( model, sendToFrontend <| TFParams [ Codec.encodeToValue Codec.int 0 ] )
-
-        FromFrontend TBNop ->
-            ( model, Cmd.none )
+            sendToFrontend <| TFParams params
 
         Nop ->
-            ( model, Cmd.none )
+            Cmd.none
+
+        FromFrontend (TBParam param) ->
+            let
+                function : Int -> ()
+                function =
+                    toFunction param.function
+
+                size : Int
+                size =
+                    param.size
+
+                operation : Benchmark.LowLevel.Operation
+                operation =
+                    Benchmark.LowLevel.operation (\_ -> function size)
+            in
+            Benchmark.Parametric.run operation
+                |> Task.attempt (RunResult param)
+
+        RunResult param (Ok res) ->
+            let
+                stats : Benchmark.Parametric.Stats
+                stats =
+                    Benchmark.Parametric.computeStatistics res
+            in
+            sendToFrontend (TFResult param (Ok stats))
+
+        RunResult param (Err e) ->
+            sendToFrontend (TFResult param (Err e))
 
 
 subscriptions : Model -> Sub Msg
