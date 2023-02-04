@@ -3,17 +3,19 @@ module Frontend.App exposing (Flags, Model, Msg, Ports, Program, RunStatus, app)
 import Backend.Benchmark exposing (Stats)
 import Browser
 import Codec exposing (Codec, Value)
-import Color
+import Color exposing (Color)
 import Common.Types as Types exposing (Config, Index, Param, ToBackend(..), ToFrontend(..))
 import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Element exposing (Element, centerY, column, el, height, px, row, text, width, wrappedRow)
+import Element exposing (Element, centerY, column, el, height, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
+import Element.Font as Font
 import Frontend.LinePlot
 import Frontend.OkLch
 import Frontend.Theme as Theme
 import Frontend.Update as Update
 import Frontend.WorkerQueue as WorkerQueue exposing (WorkerQueue)
+import List.Extra
 
 
 type alias Ports msg =
@@ -201,71 +203,164 @@ resultsCount results =
 
 viewResults : Results -> Element (Msg graph function)
 viewResults results =
+    results
+        |> Dict.toList
+        |> List.map (\( graphName, graph ) -> viewGraph graphName graph)
+        |> wrappedRow [ Theme.spacing ]
+
+
+viewGraph : GraphName -> Dict FunctionName (Dict Int Stats) -> Element msg
+viewGraph graphName graph =
     let
         colorCount : Int
         colorCount =
-            results
-                |> Dict.foldl (\_ graph -> max (Dict.size graph)) 0
+            Dict.size graph
 
-        colors : List Color.Color
-        colors =
-            List.range 0 (colorCount - 1)
-                |> List.map
-                    (\i ->
-                        let
-                            ( r, g, b ) =
-                                Frontend.OkLch.oklchToSRGB
-                                    ( 0.75
-                                    , 0.126
-                                    , toFloat i * 360 / toFloat colorCount
-                                    )
-                        in
-                        Color.rgb r g b
-                    )
+        colorsDict : Dict FunctionName Color
+        colorsDict =
+            List.indexedMap
+                (\i functionName ->
+                    let
+                        ( r, g, b ) =
+                            Frontend.OkLch.oklchToSRGB
+                                ( 0.75
+                                , 0.126
+                                , toFloat i * 360 / toFloat colorCount
+                                )
+                    in
+                    ( functionName, Color.rgb r g b )
+                )
+                (Dict.keys graph)
+                |> Dict.fromList
+
+        toColor : FunctionName -> Color
+        toColor functionName =
+            Dict.get functionName colorsDict
+                |> Maybe.withDefault Color.black
+
+        linePlot : Element msg
+        linePlot =
+            graph
+                |> Dict.toList
+                |> List.map (\( functionName, data ) -> ( toColor functionName, data ))
+                |> Frontend.LinePlot.view
+                |> Element.html
+                |> el []
     in
-    results
-        |> Dict.toList
-        |> List.map
-            (\( graphName, graph ) ->
-                column [ Theme.spacing ]
-                    [ text graphName
-                    , graph
-                        |> Dict.toList
-                        |> List.map2
-                            (\color ( _, data ) ->
-                                ( color, data )
-                            )
-                            colors
-                        |> Frontend.LinePlot.view
-                        |> Element.html
-                        |> el []
-                    , graph
-                        |> Dict.toList
-                        |> List.map2
-                            (\color ( functionName, _ ) ->
-                                let
-                                    rgba : { red : Float, green : Float, blue : Float, alpha : Float }
-                                    rgba =
-                                        Color.toRgba color
-                                in
-                                row []
-                                    [ el
-                                        [ Background.color <|
-                                            Element.rgb rgba.red rgba.green rgba.blue
-                                        , width <| px 10
-                                        , height <| px 10
-                                        , centerY
-                                        ]
+    column [ Theme.spacing ]
+        [ text graphName
+        , linePlot
+        , graph
+            |> Dict.toList
+            |> List.map
+                (\( functionName, _ ) ->
+                    let
+                        rgba : { red : Float, green : Float, blue : Float, alpha : Float }
+                        rgba =
+                            Color.toRgba (toColor functionName)
+                    in
+                    row []
+                        [ el
+                            [ Background.color <|
+                                Element.rgb rgba.red rgba.green rgba.blue
+                            , width <| px 10
+                            , height <| px 10
+                            , centerY
+                            ]
+                            Element.none
+                        , text " "
+                        , text functionName
+                        ]
+                )
+            |> column []
+        , viewTable graph toColor
+        ]
+
+
+viewTable : Dict FunctionName (Dict Int Stats) -> (FunctionName -> Color) -> Element msg
+viewTable times toColor =
+    let
+        data : List ( Int, Dict FunctionName Stats )
+        data =
+            times
+                |> Dict.toList
+                |> List.concatMap (\( function, dict ) -> List.map (\( size, stats ) -> ( size, function, stats )) (Dict.toList dict))
+                |> List.Extra.gatherEqualsBy (\( size, _, _ ) -> size)
+                |> List.map
+                    (\( ( size, _, _ ) as head, tail ) ->
+                        ( size
+                        , (head :: tail)
+                            |> List.map (\( _, key, stats ) -> ( key, stats ))
+                            |> Dict.fromList
+                        )
+                    )
+
+        keys : List ( FunctionName, Color )
+        keys =
+            Dict.keys times
+                |> List.map
+                    (\functionName ->
+                        ( functionName
+                        , toColor functionName
+                        )
+                    )
+
+        header : String -> Maybe Color -> Element msg
+        header label color =
+            row [ Font.bold, Element.spacing 3 ]
+                [ case color of
+                    Nothing ->
+                        Element.none
+
+                    Just c ->
+                        let
+                            rgba : { red : Float, green : Float, blue : Float, alpha : Float }
+                            rgba =
+                                Color.toRgba c
+                        in
+                        el
+                            [ Background.color <| Element.rgb rgba.red rgba.green rgba.blue
+                            , width <| px 10
+                            , height <| px 10
+                            , centerY
+                            ]
+                            Element.none
+                , text label
+                ]
+    in
+    table [ Theme.spacing ]
+        { data = data
+        , columns =
+            { header = header "size" Nothing
+            , view = \( size, _ ) -> text <| String.fromInt size
+            , width = shrink
+            }
+                :: List.map
+                    (\( key, color ) ->
+                        { header = header key (Just color)
+                        , view =
+                            \( _, vals ) ->
+                                case Dict.get key vals of
+                                    Just stats ->
+                                        text <| formatFloat stats.min ++ "; " ++ formatFloat stats.median ++ "; " ++ formatFloat stats.max
+
+                                    Nothing ->
                                         Element.none
-                                    , text " "
-                                    , text functionName
-                                    ]
-                            )
-                            colors
-                        |> column []
-                    ]
-            )
-        |> wrappedRow [ Theme.spacing ]
+                        , width = shrink
+                        }
+                    )
+                    keys
+        }
+
+
+formatFloat : Float -> String
+formatFloat f =
+    let
+        rounded : Int
+        rounded =
+            round (f * 100)
+    in
+    String.fromInt (rounded // 100) ++ "." ++ String.fromInt (modBy 100 rounded)
 
 
 update : Config graph function -> Ports (Msg graph function) -> Msg graph function -> Model graph function -> ( Model graph function, Cmd (Msg graph function) )
