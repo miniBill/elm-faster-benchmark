@@ -1,4 +1,4 @@
-module Frontend.Theme exposing (button, padding, spacing)
+module Frontend.Theme exposing (borderRounded, borderWidth, button, padding, spacing)
 
 import Element exposing (Attribute, Element)
 import Element.Border as Border
@@ -20,6 +20,16 @@ padding =
     Element.padding rythm
 
 
+borderRounded : Attribute msg
+borderRounded =
+    Border.rounded rythm
+
+
+borderWidth : Attribute msg
+borderWidth =
+    Border.width 1
+
+
 button :
     List (Attribute msg)
     ->
@@ -28,4 +38,4 @@ button :
         }
     -> Element msg
 button attrs =
-    Input.button (Border.width 1 :: Border.rounded rythm :: padding :: attrs)
+    Input.button (borderRounded :: borderWidth :: padding :: attrs)

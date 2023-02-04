@@ -247,8 +247,13 @@ viewGraph graphName graph =
                 |> Element.html
                 |> el []
     in
-    column [ Theme.spacing ]
-        [ text graphName
+    column
+        [ Theme.spacing
+        , Theme.padding
+        , Theme.borderWidth
+        , Theme.borderRounded
+        ]
+        [ el [ Font.bold ] <| text graphName
         , linePlot
         , viewTable graph toColor
         ]

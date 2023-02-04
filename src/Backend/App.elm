@@ -17,14 +17,14 @@ type alias Ports msg =
 params : Config graph function -> List (Param graph function)
 params config =
     List.Extra.lift3
-        (\graph size function ->
-            { graph = graph
+        (\size graph function ->
+            { size = size
+            , graph = graph
             , function = function
-            , size = size
             }
         )
-        config.graphs
         config.sizes
+        config.graphs
         config.functions
 
 
