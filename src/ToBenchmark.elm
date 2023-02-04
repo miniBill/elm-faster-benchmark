@@ -1,6 +1,7 @@
 module ToBenchmark exposing (Function(..), Graph(..), functionCodec, functionToString, functions, graphCodec, graphToString, graphs, sizes, timeout, toFunction)
 
 import Codec exposing (Codec)
+import Dict exposing (Dict)
 
 
 type Graph
@@ -85,12 +86,33 @@ toFunction function =
 
 
 fibSlow : Int -> Int
-fibSlow n =
-    if n < 2 then
-        1
+fibSlow =
+    let
+        go : Dict Int Int -> Int -> ( Dict Int Int, Int )
+        go acc n =
+            if n < 2 then
+                ( acc, 1 )
 
-    else
-        fibSlow (n - 1) + fibSlow (n - 2)
+            else
+                case Dict.get n acc of
+                    Nothing ->
+                        let
+                            ( acc2, m1 ) =
+                                go acc (n - 1)
+
+                            ( acc3, m2 ) =
+                                go acc2 (n - 2)
+
+                            res : Int
+                            res =
+                                m1 + m2
+                        in
+                        ( Dict.insert n res acc3, res )
+
+                    Just cached ->
+                        ( acc, cached )
+    in
+    go Dict.empty >> Tuple.second
 
 
 fibFast : Int -> Int
