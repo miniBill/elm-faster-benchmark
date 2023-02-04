@@ -1,8 +1,8 @@
-module WorkerQueue exposing (WorkerQueue, addFree, areAllFree, freeCount, getOne, init, totalSize)
+module Benchmark.WorkerQueue exposing (WorkerQueue, addFree, areAllFree, freeCount, getOne, init, totalSize)
 
+import Common.Types exposing (Index)
 import Deque exposing (Deque)
 import Set exposing (Set)
-import Types exposing (Index)
 
 
 type WorkerQueue

@@ -1,12 +1,12 @@
-port module Backend exposing (Flags, Model, Msg, main)
+port module Benchmark.Backend exposing (Flags, Model, Msg, main)
 
 import Benchmark.LowLevel
 import Benchmark.Parametric
 import Codec exposing (Value)
+import Common.Types as Types exposing (Param, ToBackend(..), ToFrontend(..))
 import List.Extra
 import Task
 import ToBenchmark
-import Types exposing (Param, ToBackend(..), ToFrontend(..))
 
 
 params : List Param

@@ -1,4 +1,4 @@
-module Update exposing (addCmd, andThen, map, update)
+module Ui.Update exposing (addCmd, andThen, map, update)
 
 
 update : model -> ( model, Cmd msg )

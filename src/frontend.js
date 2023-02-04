@@ -31,7 +31,7 @@
   }
 
   // @ts-ignore
-  const Frontend = Elm.Frontend;
+  const Frontend = Elm.Ui.Frontend;
 
   const app = Frontend.init({
     node: document.getElementsByTagName("main")[0],

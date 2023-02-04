@@ -1,4 +1,4 @@
-module Types exposing (Index, Param, ToBackend(..), ToFrontend(..), toBackendCodec, toFrontendCodec)
+module Common.Types exposing (Index, Param, ToBackend(..), ToFrontend(..), toBackendCodec, toFrontendCodec)
 
 import Benchmark.Parametric exposing (Stats)
 import Codec exposing (Codec)

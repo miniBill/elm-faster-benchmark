@@ -1,4 +1,4 @@
-module OkLch exposing (Float3, oklchToSRGB)
+module Ui.OkLch exposing (Float3, oklchToSRGB)
 
 
 oklchToSRGB : Float3 -> Float3

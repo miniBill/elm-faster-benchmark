@@ -1,20 +1,20 @@
-port module Frontend exposing (Flags, Model, Msg, RunStatus, main)
+port module Ui.Frontend exposing (Flags, Model, Msg, RunStatus, main)
 
 import Benchmark.Parametric exposing (Stats)
+import Benchmark.WorkerQueue as WorkerQueue exposing (WorkerQueue)
 import Browser
 import Codec exposing (Value)
 import Color
+import Common.Types as Types exposing (Index, Param, ToBackend(..), ToFrontend(..))
 import Deque exposing (Deque)
 import Dict exposing (Dict)
 import Element exposing (Element, centerY, column, el, height, px, row, text, width, wrappedRow)
 import Element.Background as Background
-import LinePlot
-import OkLch
-import Theme
 import ToBenchmark
-import Types exposing (Index, Param, ToBackend(..), ToFrontend(..))
-import Update
-import WorkerQueue exposing (WorkerQueue)
+import Ui.LinePlot
+import Ui.OkLch
+import Ui.Theme as Theme
+import Ui.Update as Update
 
 
 type alias Flags =
@@ -198,7 +198,7 @@ viewResults results =
                     (\i ->
                         let
                             ( r, g, b ) =
-                                OkLch.oklchToSRGB
+                                Ui.OkLch.oklchToSRGB
                                     ( 0.75
                                     , 0.126
                                     , toFloat i * 360 / toFloat colorCount
@@ -220,7 +220,7 @@ viewResults results =
                                 ( color, data )
                             )
                             colors
-                        |> LinePlot.view
+                        |> Ui.LinePlot.view
                         |> Element.html
                         |> el []
                     , graph

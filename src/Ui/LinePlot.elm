@@ -1,4 +1,4 @@
-module LinePlot exposing (Data, Datum, view)
+module Ui.LinePlot exposing (Data, Datum, view)
 
 import Axis
 import Benchmark.Parametric exposing (Stats)
