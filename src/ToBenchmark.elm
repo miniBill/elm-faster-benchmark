@@ -1,10 +1,11 @@
-module ToBenchmark exposing (Function, Graph, config)
+module ToBenchmark exposing (Function, Graph, Overlap, Ratio, config)
 
 import Codec exposing (Codec)
 import Common.Types exposing (Config, Param)
 import Dict exposing (Dict)
 import DictDotDot as DDD
 import FastIntersect
+import List.Extra
 import Random
 
 
@@ -22,20 +23,87 @@ config =
     }
 
 
-type Graph
-    = Simple
+type alias Graph =
+    { ratio : Ratio
+    , overlap : Overlap
+    }
+
+
+type alias Ratio =
+    ( Int, Int )
+
+
+type Overlap
+    = OverlapRandom
+    | OverlapFull
+    | OverlapNoneLeftLower
+    | OverlapNoneRightLower
+    | OverlapNoneEvenOdd
 
 
 graphToString : Graph -> String
 graphToString graph =
-    case graph of
-        Simple ->
-            "Comparing implementations"
+    ratioToString graph.ratio ++ " " ++ overlapToString graph.overlap
+
+
+ratioToString : Ratio -> String
+ratioToString ( l, r ) =
+    String.fromInt l ++ ":" ++ String.fromInt r
+
+
+overlapToString : Overlap -> String
+overlapToString overlap =
+    case overlap of
+        OverlapFull ->
+            "100% shared"
+
+        OverlapRandom ->
+            "~50% shared"
+
+        OverlapNoneLeftLower ->
+            "0% shared (left < right)"
+
+        OverlapNoneRightLower ->
+            "0% shared (left > right)"
+
+        OverlapNoneEvenOdd ->
+            "0% shared (left odd, right even)"
 
 
 graphCodec : Codec Graph
 graphCodec =
-    Codec.constant Simple
+    Codec.object (\ratio overlap -> { ratio = ratio, overlap = overlap })
+        |> Codec.field "ratio" .ratio (Codec.tuple Codec.int Codec.int)
+        |> Codec.field "overlap" .overlap overlapCodec
+        |> Codec.buildObject
+
+
+overlapCodec : Codec Overlap
+overlapCodec =
+    Codec.custom
+        (\frandom ffull fnoneLeftLower fnoneRightLower fnoneEvenOdd value ->
+            case value of
+                OverlapRandom ->
+                    frandom
+
+                OverlapFull ->
+                    ffull
+
+                OverlapNoneLeftLower ->
+                    fnoneLeftLower
+
+                OverlapNoneRightLower ->
+                    fnoneRightLower
+
+                OverlapNoneEvenOdd ->
+                    fnoneEvenOdd
+        )
+        |> Codec.variant0 "OverlapRandom" OverlapRandom
+        |> Codec.variant0 "OverlapFull" OverlapFull
+        |> Codec.variant0 "OverlapNoneLeftLower" OverlapNoneLeftLower
+        |> Codec.variant0 "OverlapNoneRightLower" OverlapNoneRightLower
+        |> Codec.variant0 "OverlapNoneEvenOdd" OverlapNoneEvenOdd
+        |> Codec.buildCustom
 
 
 type Function
@@ -78,7 +146,35 @@ timeout =
 
 graphs : List Graph
 graphs =
-    [ Simple ]
+    List.Extra.lift2
+        (\ratio overlap ->
+            { overlap = overlap
+            , ratio = ratio
+            }
+        )
+        ratios
+        overlaps
+
+
+ratios : List Ratio
+ratios =
+    [ ( 1, 0 )
+    , ( 30, 1 )
+    , ( 10, 1 )
+    , ( 1, 1 )
+    , ( 1, 10 )
+    , ( 1, 30 )
+    ]
+
+
+overlaps : List Overlap
+overlaps =
+    [ OverlapRandom
+    , OverlapFull
+    , OverlapNoneEvenOdd
+    , OverlapNoneLeftLower
+    , OverlapNoneRightLower
+    ]
 
 
 functions : List Function
@@ -117,41 +213,71 @@ generate size =
 
 
 toFunction : Param Graph Function -> (() -> ())
-toFunction { function, size } =
+toFunction { graph, function, size } =
+    let
+        ( lratio, rratio ) =
+            graph.ratio
+
+        lsize : Int
+        lsize =
+            size * lratio
+
+        rsize : Int
+        rsize =
+            size * rratio
+
+        rsizeFixed : Int
+        rsizeFixed =
+            if rsize == lsize then
+                -- Prevent having the exact same size, and thus random seed
+                rsize + 1
+
+            else
+                rsize
+
+        ls : Both Int Int
+        ls =
+            if graph.overlap == OverlapNoneEvenOdd then
+                mapBoth (\_ n -> n * 2) (generate lsize)
+
+            else
+                generate lsize
+
+        rs : Both Int Int
+        rs =
+            generate rsizeFixed
+
+        rsFixed : Both Int Int
+        rsFixed =
+            case graph.overlap of
+                OverlapRandom ->
+                    rs
+
+                OverlapFull ->
+                    ls
+
+                OverlapNoneLeftLower ->
+                    mapBoth (\_ n -> n + max lsize rsizeFixed * 3) rs
+
+                OverlapNoneRightLower ->
+                    mapBoth (\_ n -> -n) rs
+
+                OverlapNoneEvenOdd ->
+                    mapBoth (\_ n -> n * 2 + 1) rs
+    in
     case function of
         Library ->
-            ignore << library size
+            \_ -> ignore <| Dict.intersect ls.core rsFixed.core
 
         Alternative ->
-            ignore << alternative size
+            \_ -> ignore <| FastIntersect.intersect ls.dotdot rsFixed.dotdot
 
 
-library : Int -> () -> Dict Int Int
-library size =
-    let
-        left : Dict Int Int
-        left =
-            (generate size).core
-
-        right : Dict Int Int
-        right =
-            (generate (size + 1)).core
-    in
-    \_ -> Dict.intersect left right
-
-
-alternative : Int -> () -> DDD.Dict Int Int
-alternative size =
-    let
-        left : DDD.Dict Int Int
-        left =
-            (generate size).dotdot
-
-        right : DDD.Dict Int Int
-        right =
-            (generate (size + 1)).dotdot
-    in
-    \_ -> FastIntersect.intersect left right
+mapBoth : (k -> v -> v) -> Both k v -> Both k v
+mapBoth f both =
+    { core = Dict.map f both.core
+    , dotdot = DDD.map f both.dotdot
+    }
 
 
 ignore : a -> ()
