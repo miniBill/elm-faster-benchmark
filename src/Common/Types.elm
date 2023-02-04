@@ -14,7 +14,7 @@ type alias Config graph function =
     , graphs : List graph
     , functions : List function
     , sizes : List Int
-    , toFunction : function -> (Int -> ())
+    , toFunction : Param graph function -> (() -> ())
 
     --
     , timeout : Maybe Float

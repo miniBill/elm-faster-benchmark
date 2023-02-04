@@ -1,8 +1,11 @@
 module ToBenchmark exposing (Function, Graph, config)
 
 import Codec exposing (Codec)
-import Common.Types exposing (Config)
+import Common.Types exposing (Config, Param)
 import Dict exposing (Dict)
+import DictDotDot as DDD
+import FastIntersect
+import Random
 
 
 config : Config Graph Function
@@ -36,33 +39,33 @@ graphCodec =
 
 
 type Function
-    = SlowFibonacci
-    | FastFibonacci
+    = Library
+    | Alternative
 
 
 functionToString : Function -> String
 functionToString function =
     case function of
-        SlowFibonacci ->
-            "Slow"
+        Library ->
+            "elm/core"
 
-        FastFibonacci ->
-            "Fast"
+        Alternative ->
+            "mine"
 
 
 functionCodec : Codec Function
 functionCodec =
     Codec.custom
-        (\fslow ffast value ->
+        (\flibrary falt value ->
             case value of
-                SlowFibonacci ->
-                    fslow
+                Library ->
+                    flibrary
 
-                FastFibonacci ->
-                    ffast
+                Alternative ->
+                    falt
         )
-        |> Codec.variant0 "SlowFibonacci" SlowFibonacci
-        |> Codec.variant0 "FastFibonacci" FastFibonacci
+        |> Codec.variant0 "Library" Library
+        |> Codec.variant0 "Alternative" Alternative
         |> Codec.buildCustom
 
 
@@ -80,8 +83,8 @@ graphs =
 
 functions : List Function
 functions =
-    [ FastFibonacci
-    , SlowFibonacci
+    [ Library
+    , Alternative
     ]
 
 
@@ -90,53 +93,64 @@ sizes =
     List.range 1 100
 
 
-toFunction : Function -> (Int -> ())
-toFunction function =
-    case function of
-        SlowFibonacci ->
-            ignore << fibSlow
-
-        FastFibonacci ->
-            ignore << fibFast
+type alias Both k v =
+    { core : Dict k v
+    , dotdot : DDD.Dict k v
+    }
 
 
-fibSlow : Int -> Int
-fibSlow =
+{-| `generate n` generates a list of n numbers between 0 and 2n
+-}
+generate : Int -> Both Int Int
+generate size =
     let
-        go : Dict Int Int -> Int -> ( Dict Int Int, Int )
-        go acc n =
-            if n < 2 then
-                ( acc, 1 )
-
-            else
-                case Dict.get n acc of
-                    Nothing ->
-                        let
-                            ( acc2, m1 ) =
-                                go acc (n - 1)
-
-                            ( acc3, m2 ) =
-                                go acc2 (n - 2)
-
-                            res : Int
-                            res =
-                                m1 + m2
-                        in
-                        ( Dict.insert n res acc3, res )
-
-                    Just cached ->
-                        ( acc, cached )
+        generator : Random.Generator (Both Int Int)
+        generator =
+            Random.int 0 (2 * size)
+                |> Random.map (\t -> ( t, t ))
+                |> Random.list size
+                |> Random.map (\lst -> { core = Dict.fromList lst, dotdot = DDD.fromList lst })
     in
-    go Dict.empty >> Tuple.second
-
-
-fibFast : Int -> Int
-fibFast n =
-    List.range 2 n
-        |> List.foldl
-            (\_ ( high, low ) -> ( high + low, high ))
-            ( 1, 1 )
+    Random.step generator (Random.initialSeed size)
         |> Tuple.first
+
+
+toFunction : Param Graph Function -> (() -> ())
+toFunction { function, size } =
+    case function of
+        Library ->
+            ignore << library size
+
+        Alternative ->
+            ignore << alternative size
+
+
+library : Int -> () -> Dict Int Int
+library size =
+    let
+        left : Dict Int Int
+        left =
+            (generate size).core
+
+        right : Dict Int Int
+        right =
+            (generate (size + 1)).core
+    in
+    \_ -> Dict.intersect left right
+
+
+alternative : Int -> () -> DDD.Dict Int Int
+alternative size =
+    let
+        left : DDD.Dict Int Int
+        left =
+            (generate size).dotdot
+
+        right : DDD.Dict Int Int
+        right =
+            (generate (size + 1)).dotdot
+    in
+    \_ -> FastIntersect.intersect left right
 
 
 ignore : a -> ()

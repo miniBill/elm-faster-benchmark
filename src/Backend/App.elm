@@ -81,17 +81,13 @@ toCmd config ports msg =
 
         FromFrontend (TBRun param) ->
             let
-                function : Int -> ()
+                function : () -> ()
                 function =
-                    config.toFunction param.function
-
-                size : Int
-                size =
-                    param.size
+                    config.toFunction param
 
                 operation : Benchmark.LowLevel.Operation
                 operation =
-                    Benchmark.LowLevel.operation (\_ -> function size)
+                    Benchmark.LowLevel.operation function
             in
             Backend.Benchmark.run operation
                 |> Task.attempt (RunResult param)
