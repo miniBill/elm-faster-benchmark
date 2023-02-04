@@ -1,7 +1,22 @@
-module ToBenchmark exposing (Function(..), Graph(..), functionCodec, functionToString, functions, graphCodec, graphToString, graphs, sizes, timeout, toFunction)
+module ToBenchmark exposing (Function(..), Graph(..), config)
 
 import Codec exposing (Codec)
+import Common.Types exposing (Config)
 import Dict exposing (Dict)
+
+
+config : Config Graph Function
+config =
+    { graphToString = graphToString
+    , graphCodec = graphCodec
+    , functionToString = functionToString
+    , functionCodec = functionCodec
+    , graphs = graphs
+    , functions = functions
+    , sizes = sizes
+    , toFunction = toFunction
+    , timeout = timeout
+    }
 
 
 type Graph
@@ -53,9 +68,9 @@ functionCodec =
 
 {-| Timeout, in milliseconds
 -}
-timeout : number
+timeout : Maybe number
 timeout =
-    3
+    Just 3
 
 
 graphs : List Graph

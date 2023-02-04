@@ -24,8 +24,8 @@ dist/%-js.js: src/%.js
 
 dist/frontend-elm.js: $(ELM_FILES) Makefile
 	mkdir -p dist
-	$(ELM) make src/Ui/Frontend.elm --output=$@ $(ELM_FLAGS)
+	$(ELM) make src/Frontend.elm --output=$@ $(ELM_FLAGS)
 
 dist/backend-elm.js: $(ELM_FILES) Makefile
 	mkdir -p dist
-	$(ELM) make src/Benchmark/Backend.elm --output=$@ $(ELM_FLAGS)
+	$(ELM) make src/Backend.elm --output=$@ $(ELM_FLAGS)

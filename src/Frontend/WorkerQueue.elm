@@ -1,4 +1,4 @@
-module Benchmark.WorkerQueue exposing (WorkerQueue, addFree, areAllFree, freeCount, getOne, init, totalSize)
+module Frontend.WorkerQueue exposing (WorkerQueue, addFree, areAllFree, freeCount, getOne, init, totalSize)
 
 import Common.Types exposing (Index)
 import Deque exposing (Deque)

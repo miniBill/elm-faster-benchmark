@@ -1,4 +1,4 @@
-module Ui.Theme exposing (button, padding, spacing)
+module Frontend.Theme exposing (button, padding, spacing)
 
 import Element exposing (Attribute, Element)
 import Element.Border as Border

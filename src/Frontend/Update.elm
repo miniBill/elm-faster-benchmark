@@ -1,4 +1,4 @@
-module Ui.Update exposing (addCmd, andThen, map, update)
+module Frontend.Update exposing (addCmd, andThen, map, update)
 
 
 update : model -> ( model, Cmd msg )

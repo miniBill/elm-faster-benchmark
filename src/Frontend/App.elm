@@ -1,20 +1,26 @@
-port module Ui.Frontend exposing (Flags, Model, Msg, RunStatus, main)
+module Frontend.App exposing (Flags, Model, Msg, Ports, Program, RunStatus, app)
 
-import Benchmark.Parametric exposing (Stats)
-import Benchmark.WorkerQueue as WorkerQueue exposing (WorkerQueue)
+import Backend.Benchmark exposing (Stats)
 import Browser
-import Codec exposing (Value)
+import Codec exposing (Codec, Value)
 import Color
-import Common.Types as Types exposing (Index, Param, ToBackend(..), ToFrontend(..))
+import Common.Types as Types exposing (Config, Index, Param, ToBackend(..), ToFrontend(..))
 import Deque exposing (Deque)
 import Dict exposing (Dict)
 import Element exposing (Element, centerY, column, el, height, px, row, text, width, wrappedRow)
 import Element.Background as Background
-import ToBenchmark
-import Ui.LinePlot
-import Ui.OkLch
-import Ui.Theme as Theme
-import Ui.Update as Update
+import Frontend.LinePlot
+import Frontend.OkLch
+import Frontend.Theme as Theme
+import Frontend.Update as Update
+import Frontend.WorkerQueue as WorkerQueue exposing (WorkerQueue)
+
+
+type alias Ports msg =
+    { terminateAll : {} -> Cmd msg
+    , fromBackend : ({ index : Int, data : Value } -> msg) -> Sub msg
+    , toBackend : { index : Int, data : Value } -> Cmd msg
+    }
 
 
 type alias Flags =
@@ -22,10 +28,10 @@ type alias Flags =
     }
 
 
-type alias Model =
+type alias Model graph function =
     { workers : WorkerQueue
-    , queue : Deque Param
-    , runStatus : RunStatus
+    , queue : Deque (Param graph function)
+    , runStatus : RunStatus graph function
     }
 
 
@@ -41,41 +47,51 @@ type alias FunctionName =
     String
 
 
-type RunStatus
+type RunStatus graph function
     = LoadingParams
-    | Ready Inputs
-    | Running Inputs Results
-    | Finished Inputs Results
-    | Stopped Inputs Results
+    | Ready (Inputs graph function)
+    | Running (Inputs graph function) Results
+    | Finished (Inputs graph function) Results
+    | Stopped (Inputs graph function) Results
 
 
-type Msg
-    = FromBackend Index ToFrontend
-    | Start Inputs
-    | Stop Inputs Results
+type Msg graph function
+    = FromBackend Index (ToFrontend graph function)
+    | Start (Inputs graph function)
+    | Stop (Inputs graph function) Results
     | Nop
 
 
-type alias Inputs =
-    { timeout : Float
-    , params : List Param
+type alias Inputs graph function =
+    { timeout : Maybe Float
+    , params : List (Param graph function)
     }
 
 
-main : Program Flags Model Msg
-main =
+type alias Program graph function =
+    Platform.Program Flags (Model graph function) (Msg graph function)
+
+
+app : Config graph function -> Ports (Msg graph function) -> Program graph function
+app config ports =
     Browser.element
-        { init = init
+        { init = init config ports
         , view = \model -> Element.layout [] <| view model
-        , update = update
-        , subscriptions = subscriptions
+        , update = update config ports
+        , subscriptions =
+            let
+                subs : Sub (Msg graph function)
+                subs =
+                    subscriptions config ports
+            in
+            \_ -> subs
         }
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
+init : Config graph function -> Ports (Msg graph function) -> Flags -> ( Model graph function, Cmd (Msg graph function) )
+init config ports flags =
     let
-        model : Model
+        model : Model graph function
         model =
             { workers = WorkerQueue.init flags.workersCount
             , queue = Deque.empty
@@ -84,14 +100,14 @@ init flags =
     in
     Update.update model
         |> Update.addCmd
-            (toBackend
+            (ports.toBackend
                 { index = 0
-                , data = Codec.encodeToValue Types.toBackendCodec TBParams
+                , data = Codec.encodeToValue (Types.toBackendCodec config) TBParams
                 }
             )
 
 
-view : Model -> Element Msg
+view : Model graph function -> Element (Msg graph function)
 view model =
     let
         workersLine : Element msg
@@ -145,7 +161,7 @@ view model =
                 ]
 
 
-viewPercentage : List Param -> Results -> String
+viewPercentage : List (Param graph function) -> Results -> String
 viewPercentage params results =
     let
         paramCount : Int
@@ -183,7 +199,7 @@ resultsCount results =
         results
 
 
-viewResults : Results -> Element Msg
+viewResults : Results -> Element (Msg graph function)
 viewResults results =
     let
         colorCount : Int
@@ -198,7 +214,7 @@ viewResults results =
                     (\i ->
                         let
                             ( r, g, b ) =
-                                Ui.OkLch.oklchToSRGB
+                                Frontend.OkLch.oklchToSRGB
                                     ( 0.75
                                     , 0.126
                                     , toFloat i * 360 / toFloat colorCount
@@ -220,7 +236,7 @@ viewResults results =
                                 ( color, data )
                             )
                             colors
-                        |> Ui.LinePlot.view
+                        |> Frontend.LinePlot.view
                         |> Element.html
                         |> el []
                     , graph
@@ -252,8 +268,8 @@ viewResults results =
         |> wrappedRow [ Theme.spacing ]
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Config graph function -> Ports (Msg graph function) -> Msg graph function -> Model graph function -> ( Model graph function, Cmd (Msg graph function) )
+update config ports msg model =
     let
         ( newModel, cmd ) =
             case msg of
@@ -270,12 +286,12 @@ update msg model =
                         , workers = WorkerQueue.init (WorkerQueue.totalSize model.workers)
                         , queue = Deque.empty
                       }
-                    , terminateAll {}
+                    , ports.terminateAll {}
                     )
 
                 FromBackend index fb ->
                     let
-                        freed : Model
+                        freed : Model graph function
                         freed =
                             { model
                                 | workers = WorkerQueue.addFree index model.workers
@@ -297,10 +313,10 @@ update msg model =
                                         newResults : Dict GraphName (Dict FunctionName (Dict Int Stats))
                                         newResults =
                                             upsert
-                                                (ToBenchmark.graphToString param.graph)
+                                                (config.graphToString param.graph)
                                                 (\graphDict ->
                                                     upsert_
-                                                        (ToBenchmark.functionToString param.function)
+                                                        (config.functionToString param.function)
                                                         (Dict.insert param.size stats)
                                                         graphDict
                                                 )
@@ -308,7 +324,7 @@ update msg model =
                                     in
                                     Update.update freed
                                         |> Update.map
-                                            (if stats.median < inputs.timeout then
+                                            (if stats.median < Maybe.withDefault stats.median inputs.timeout then
                                                 identity
 
                                              else
@@ -337,13 +353,13 @@ update msg model =
                     Update.update model
     in
     ( newModel, cmd )
-        |> Update.andThen trySend
+        |> Update.andThen (trySend config ports)
 
 
-removeBigger : Param -> Model -> Model
+removeBigger : Param graph function -> Model graph function -> Model graph function
 removeBigger param model =
     let
-        filter : Param -> Bool
+        filter : Param graph function -> Bool
         filter p =
             (p.graph /= param.graph)
                 || (p.function /= param.function)
@@ -382,31 +398,22 @@ upsert_ key f =
     Dict.update key (Maybe.withDefault Dict.empty >> f >> Just)
 
 
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    receiveFromBackend
+subscriptions : Config graph function -> Ports (Msg graph function) -> Sub (Msg graph function)
+subscriptions config ports =
+    receiveFromBackend config ports
 
 
 
 -- PORTS --
 
 
-port terminateAll : {} -> Cmd msg
-
-
-port fromBackend : ({ index : Int, data : Value } -> msg) -> Sub msg
-
-
-port toBackend : { index : Int, data : Value } -> Cmd msg
-
-
-sendToBackend : Param -> Model -> Model
+sendToBackend : Param graph function -> Model graph function -> Model graph function
 sendToBackend tb model =
     { model | queue = Deque.pushBack tb model.queue }
 
 
-trySend : Model -> ( Model, Cmd Msg )
-trySend model =
+trySend : Config graph function -> Ports (Msg graph function) -> Model graph function -> ( Model graph function, Cmd (Msg graph function) )
+trySend config ports model =
     let
         ( freeWorker, workers ) =
             WorkerQueue.getOne model.workers
@@ -417,22 +424,27 @@ trySend model =
     case ( freeWorker, toSend ) of
         ( Just index, Just param ) ->
             ( { model | workers = workers, queue = queue }
-            , toBackend
+            , ports.toBackend
                 { index = index
-                , data = Codec.encodeToValue Types.toBackendCodec (TBRun param)
+                , data = Codec.encodeToValue (Types.toBackendCodec config) (TBRun param)
                 }
             )
-                |> Update.andThen trySend
+                |> Update.andThen (trySend config ports)
 
         _ ->
             ( model, Cmd.none )
 
 
-receiveFromBackend : Sub Msg
-receiveFromBackend =
-    fromBackend
+receiveFromBackend : Config graph function -> Ports (Msg graph function) -> Sub (Msg graph function)
+receiveFromBackend config ports =
+    let
+        codec : Codec (ToFrontend graph function)
+        codec =
+            Types.toFrontendCodec config
+    in
+    ports.fromBackend
         (\{ index, data } ->
-            case Codec.decodeValue Types.toFrontendCodec data of
+            case Codec.decodeValue codec data of
                 Ok decoded ->
                     FromBackend index decoded
 

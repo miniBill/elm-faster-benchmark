@@ -1,4 +1,4 @@
-module Benchmark.Parametric exposing
+module Backend.Benchmark exposing
     ( run
     , Stats, computeStatistics
     , statsCodec

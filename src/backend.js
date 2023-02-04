@@ -2,7 +2,7 @@
   importScripts("./backend-elm.js");
 
   // @ts-ignore
-  const Backend = Elm.Benchmark.Backend;
+  const Backend = Elm.Backend;
 
   const app = Backend.init({ flags: {} });
 

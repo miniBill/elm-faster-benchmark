@@ -1,7 +1,7 @@
-module Ui.LinePlot exposing (Data, Datum, view)
+module Frontend.LinePlot exposing (Data, Datum, view)
 
 import Axis
-import Benchmark.Parametric exposing (Stats)
+import Backend.Benchmark exposing (Stats)
 import Color exposing (Color)
 import Dict exposing (Dict)
 import Html.Attributes
