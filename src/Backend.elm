@@ -4,77 +4,24 @@ import Benchmark.LowLevel
 import Benchmark.Parametric
 import Codec exposing (Value)
 import Codecs
+import List.Extra
 import Task
-import Types exposing (Function(..), GraphName, Param, ToBackend(..), ToFrontend(..))
+import ToBenchmark
+import Types exposing (Param, ToBackend(..), ToFrontend(..))
 
 
 params : List Param
 params =
-    let
-        graphNames : List GraphName
-        graphNames =
-            [ "Simple graph" ]
-
-        functions : List Function
-        functions =
-            [ FastFibonacci
-
-            -- , SlowFibonacci
-            ]
-
-        sizes : List Int
-        sizes =
-            List.range 1 100
-    in
-    graphNames
-        |> List.concatMap
-            (\graphName ->
-                sizes
-                    |> List.concatMap
-                        (\size ->
-                            functions
-                                |> List.map
-                                    (\function ->
-                                        { graphName = graphName
-                                        , function = function
-                                        , size = size
-                                        }
-                                    )
-                        )
-            )
-
-
-toFunction : Function -> (Int -> ())
-toFunction function =
-    case function of
-        SlowFibonacci ->
-            ignore << fibSlow
-
-        FastFibonacci ->
-            ignore << fibFast
-
-
-ignore : a -> ()
-ignore _ =
-    ()
-
-
-fibSlow : Int -> Int
-fibSlow n =
-    if n < 2 then
-        1
-
-    else
-        fibSlow (n - 1) + fibSlow (n - 2)
-
-
-fibFast : Int -> Int
-fibFast n =
-    List.range 2 n
-        |> List.foldl
-            (\_ ( high, low ) -> ( high + low, high ))
-            ( 1, 1 )
-        |> Tuple.first
+    List.Extra.lift3
+        (\graph size function ->
+            { graph = graph
+            , function = function
+            , size = size
+            }
+        )
+        ToBenchmark.graphs
+        ToBenchmark.sizes
+        ToBenchmark.functions
 
 
 type alias Flags =
@@ -109,16 +56,20 @@ toCmd : Msg -> Cmd Msg
 toCmd msg =
     case msg of
         FromFrontend TBParams ->
-            sendToFrontend <| TFParams params
+            sendToFrontend <|
+                TFParams
+                    { timeout = ToBenchmark.timeout
+                    , params = params
+                    }
 
         Nop ->
             Cmd.none
 
-        FromFrontend (TBParam param) ->
+        FromFrontend (TBRun param) ->
             let
                 function : Int -> ()
                 function =
-                    toFunction param.function
+                    ToBenchmark.toFunction param.function
 
                 size : Int
                 size =

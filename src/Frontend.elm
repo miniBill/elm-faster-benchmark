@@ -3,7 +3,6 @@ port module Frontend exposing (Flags, Model, Msg, RunStatus, main)
 import Benchmark.Parametric exposing (Stats)
 import Browser
 import Codec exposing (Value)
-import Codecs
 import Color exposing (Color)
 import Deque exposing (Deque)
 import Dict exposing (Dict)
@@ -11,7 +10,8 @@ import Element exposing (Element, centerY, column, el, height, px, row, text, wi
 import Element.Background as Background
 import LinePlot
 import Theme
-import Types exposing (GraphName, Index, Param, ToBackend(..), ToFrontend(..))
+import ToBenchmark
+import Types exposing (Index, Param, ToBackend(..), ToFrontend(..))
 import Update
 import WorkerQueue exposing (WorkerQueue)
 
@@ -32,23 +32,33 @@ type alias Results =
     Dict GraphName (Dict FunctionName (Dict Int Stats))
 
 
+type alias GraphName =
+    String
+
+
 type alias FunctionName =
     String
 
 
 type RunStatus
     = LoadingParams
-    | Ready (List Param)
-    | Running (List Param) Results
-    | Finished (List Param) Results
-    | Stopped (List Param) Results
+    | Ready Inputs
+    | Running Inputs Results
+    | Finished Inputs Results
+    | Stopped Inputs Results
 
 
 type Msg
     = FromBackend Index ToFrontend
-    | Start (List Param)
-    | Stop (List Param) Results
+    | Start Inputs
+    | Stop Inputs Results
     | Nop
+
+
+type alias Inputs =
+    { timeout : Float
+    , params : List Param
+    }
 
 
 main : Program Flags Model Msg
@@ -75,7 +85,7 @@ init flags =
         |> Update.addCmd
             (toBackend
                 { index = 0
-                , data = Codec.encodeToValue Codecs.toBackendCodec TBParams
+                , data = Codec.encodeToValue Types.toBackendCodec TBParams
                 }
             )
 
@@ -94,41 +104,41 @@ view model =
                 , text "Loading param list..."
                 ]
 
-            Ready params ->
+            Ready inputs ->
                 [ workersLine
-                , text <| "Will run with " ++ String.fromInt (List.length params) ++ " params"
+                , text <| "Will run with " ++ String.fromInt (List.length inputs.params) ++ " params"
                 , Theme.button []
                     { label = text "Start"
-                    , onPress = Just (Start params)
+                    , onPress = Just (Start inputs)
                     }
                 ]
 
-            Running params results ->
+            Running inputs results ->
                 [ workersLine
-                , text <| "Running... " ++ viewPercentage params results
+                , text <| "Running... " ++ viewPercentage inputs.params results
                 , Theme.button []
                     { label = text "Stop"
-                    , onPress = Just (Stop params results)
+                    , onPress = Just (Stop inputs results)
                     }
                 , viewResults results
                 ]
 
-            Finished params results ->
+            Finished inputs results ->
                 [ workersLine
                 , text "Done"
                 , Theme.button []
                     { label = text "Restart"
-                    , onPress = Just (Start params)
+                    , onPress = Just (Start inputs)
                     }
                 , viewResults results
                 ]
 
-            Stopped params results ->
+            Stopped inputs results ->
                 [ workersLine
-                , text <| "Stopped at " ++ viewPercentage params results
+                , text <| "Stopped at " ++ viewPercentage inputs.params results
                 , Theme.button []
                     { label = text "Restart"
-                    , onPress = Just (Start params)
+                    , onPress = Just (Start inputs)
                     }
                 , viewResults results
                 ]
@@ -222,23 +232,16 @@ viewResults results =
         |> wrappedRow [ Theme.spacing ]
 
 
-{-| Timeout, in milliseconds
--}
-timeout : number
-timeout =
-    3
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
         ( newModel, cmd ) =
             case msg of
-                Start params ->
+                Start inputs ->
                     Update.update
                         (List.foldl sendToBackend
-                            { model | runStatus = Running params Dict.empty }
-                            params
+                            { model | runStatus = Running inputs Dict.empty }
+                            inputs.params
                         )
 
                 Stop params results ->
@@ -265,7 +268,7 @@ update msg model =
 
                         TFResult param (Ok stats) ->
                             case freed.runStatus of
-                                Running params results ->
+                                Running inputs results ->
                                     let
                                         oldResults : Dict GraphName (Dict FunctionName (Dict Int Stats))
                                         oldResults =
@@ -274,20 +277,18 @@ update msg model =
                                         newResults : Dict GraphName (Dict FunctionName (Dict Int Stats))
                                         newResults =
                                             upsert
-                                                param.graphName
-                                                tmp
+                                                (ToBenchmark.graphToString param.graph)
+                                                (\graphDict ->
+                                                    upsert_
+                                                        (ToBenchmark.functionToString param.function)
+                                                        (Dict.insert param.size stats)
+                                                        graphDict
+                                                )
                                                 oldResults
-
-                                        tmp : Dict FunctionName (Dict Int Stats) -> Dict FunctionName (Dict Int Stats)
-                                        tmp graphDict =
-                                            upsert_
-                                                (Types.functionToString param.function)
-                                                (Dict.insert param.size stats)
-                                                graphDict
                                     in
                                     Update.update freed
                                         |> Update.map
-                                            (if stats.median < timeout then
+                                            (if stats.median < inputs.timeout then
                                                 identity
 
                                              else
@@ -298,10 +299,10 @@ update msg model =
                                                 { removed
                                                     | runStatus =
                                                         if Deque.isEmpty removed.queue && WorkerQueue.areAllFree removed.workers then
-                                                            Finished params newResults
+                                                            Finished inputs newResults
 
                                                         else
-                                                            Running params newResults
+                                                            Running inputs newResults
                                                 }
                                             )
 
@@ -324,7 +325,7 @@ removeBigger param model =
     let
         filter : Param -> Bool
         filter p =
-            (p.graphName /= param.graphName)
+            (p.graph /= param.graph)
                 || (p.function /= param.function)
                 || (p.size < param.size)
     in
@@ -337,17 +338,17 @@ removeBigger param model =
                 LoadingParams ->
                     LoadingParams
 
-                Ready params ->
-                    Ready (List.filter filter params)
+                Ready inputs ->
+                    Ready { inputs | params = List.filter filter inputs.params }
 
-                Running params results ->
-                    Running (List.filter filter params) results
+                Running inputs results ->
+                    Running { inputs | params = List.filter filter inputs.params } results
 
-                Finished params results ->
-                    Finished (List.filter filter params) results
+                Finished inputs results ->
+                    Finished { inputs | params = List.filter filter inputs.params } results
 
-                Stopped params results ->
-                    Stopped (List.filter filter params) results
+                Stopped inputs results ->
+                    Stopped { inputs | params = List.filter filter inputs.params } results
     }
 
 
@@ -398,7 +399,7 @@ trySend model =
             ( { model | workers = workers, queue = queue }
             , toBackend
                 { index = index
-                , data = Codec.encodeToValue Codecs.toBackendCodec (TBParam param)
+                , data = Codec.encodeToValue Types.toBackendCodec (TBRun param)
                 }
             )
                 |> Update.andThen trySend
@@ -411,7 +412,7 @@ receiveFromBackend : Sub Msg
 receiveFromBackend =
     fromBackend
         (\{ index, data } ->
-            case Codec.decodeValue Codecs.toFrontendCodec data of
+            case Codec.decodeValue Types.toFrontendCodec data of
                 Ok decoded ->
                     FromBackend index decoded
 
