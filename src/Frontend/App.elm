@@ -7,7 +7,7 @@ import Color exposing (Color)
 import Common.Types as Types exposing (Config, Index, Param, ToBackend(..), ToFrontend(..))
 import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Element exposing (Element, centerY, column, el, height, px, row, shrink, table, text, width, wrappedRow)
+import Element exposing (Element, alignTop, centerY, column, el, fill, height, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
 import Frontend.LinePlot
@@ -252,6 +252,8 @@ viewGraph graphName graph =
         , Theme.padding
         , Theme.borderWidth
         , Theme.borderRounded
+        , alignTop
+        , height fill
         ]
         [ el [ Font.bold ] <| text graphName
         , linePlot
