@@ -90,7 +90,8 @@ functions =
 
 sizes : List Int
 sizes =
-    List.range 1 100
+    List.range 1 14
+        |> List.map (\i -> 100 * 3 ^ i // 2 ^ i)
 
 
 type alias Both k v =
