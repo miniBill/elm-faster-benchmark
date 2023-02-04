@@ -1,4 +1,4 @@
-module Codecs exposing (paramCodec, toBackendCodec, toFrontendCodec)
+module Codecs exposing (toBackendCodec, toFrontendCodec)
 
 import Benchmark.Parametric
 import Codec exposing (Codec)

@@ -1,4 +1,4 @@
-module Update exposing (andThen, map, update)
+module Update exposing (addCmd, andThen, map, update)
 
 
 update : model -> ( model, Cmd msg )
@@ -18,3 +18,8 @@ andThen f ( model, cmd ) =
             f model
     in
     ( newModel, Cmd.batch [ cmd, newCmd ] )
+
+
+addCmd : Cmd msg -> ( model, Cmd msg ) -> ( model, Cmd msg )
+addCmd newCmd ( model, cmd ) =
+    ( model, Cmd.batch [ cmd, newCmd ] )

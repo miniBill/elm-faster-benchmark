@@ -1,4 +1,4 @@
-module Theme exposing (button, padding, rythm, spacing)
+module Theme exposing (button, padding, spacing)
 
 import Element exposing (Attribute, Element)
 import Element.Border as Border

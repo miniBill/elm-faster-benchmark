@@ -13,6 +13,7 @@ import LinePlot
 import Theme
 import Types exposing (GraphName, Index, Param, ToBackend(..), ToFrontend(..))
 import Update
+import WorkerQueue exposing (WorkerQueue)
 
 
 type alias Flags =
@@ -21,9 +22,8 @@ type alias Flags =
 
 
 type alias Model =
-    { workersCount : Int
-    , freeWorkers : Deque Index
-    , queue : Deque ToBackend
+    { workers : WorkerQueue
+    , queue : Deque Param
     , runStatus : RunStatus
     }
 
@@ -66,20 +66,18 @@ init flags =
     let
         model : Model
         model =
-            { workersCount = flags.workersCount
-            , freeWorkers = allFree flags.workersCount
+            { workers = WorkerQueue.init flags.workersCount
             , queue = Deque.empty
             , runStatus = LoadingParams
             }
     in
     Update.update model
-        |> Update.map (sendToBackend TBParams)
-        |> Update.andThen trySend
-
-
-allFree : Int -> Deque Int
-allFree workersCount =
-    Deque.fromList (List.range 0 (workersCount - 1))
+        |> Update.addCmd
+            (toBackend
+                { index = 0
+                , data = Codec.encodeToValue Codecs.toBackendCodec TBParams
+                }
+            )
 
 
 view : Model -> Element Msg
@@ -87,7 +85,7 @@ view model =
     let
         workersLine : Element msg
         workersLine =
-            text <| "Free workers: " ++ String.fromInt (Deque.length model.freeWorkers)
+            text <| "Free workers: " ++ String.fromInt (WorkerQueue.freeCount model.workers)
     in
     column [ Theme.padding, Theme.spacing ] <|
         case model.runStatus of
@@ -143,11 +141,20 @@ viewPercentage params results =
         paramCount =
             List.length params
 
+        rc : Int
+        rc =
+            resultsCount results
+
         percentage : Int
         percentage =
-            (resultsCount results * 100) // paramCount
+            (rc * 100) // paramCount
     in
-    String.fromInt percentage ++ "%"
+    String.fromInt rc
+        ++ "/"
+        ++ String.fromInt paramCount
+        ++ " ("
+        ++ String.fromInt percentage
+        ++ "%)"
 
 
 resultsCount : Results -> Int
@@ -155,8 +162,8 @@ resultsCount results =
     Dict.foldl
         (\_ graph acc ->
             Dict.foldl
-                (\_ function ->
-                    (+) (Dict.size function)
+                (\_ function i_acc ->
+                    Dict.size function + i_acc
                 )
                 acc
                 graph
@@ -215,6 +222,13 @@ viewResults results =
         |> wrappedRow [ Theme.spacing ]
 
 
+{-| Timeout, in milliseconds
+-}
+timeout : number
+timeout =
+    3
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
@@ -222,7 +236,7 @@ update msg model =
             case msg of
                 Start params ->
                     Update.update
-                        (List.foldl (\param -> sendToBackend (TBParam param))
+                        (List.foldl sendToBackend
                             { model | runStatus = Running params Dict.empty }
                             params
                         )
@@ -230,7 +244,7 @@ update msg model =
                 Stop params results ->
                     ( { model
                         | runStatus = Stopped params results
-                        , freeWorkers = allFree model.workersCount
+                        , workers = WorkerQueue.init (WorkerQueue.totalSize model.workers)
                         , queue = Deque.empty
                       }
                     , terminateAll {}
@@ -241,13 +255,13 @@ update msg model =
                         freed : Model
                         freed =
                             { model
-                                | freeWorkers = Deque.pushFront index model.freeWorkers
+                                | workers = WorkerQueue.addFree index model.workers
                             }
                     in
                     case fb of
-                        TFResult _ (Err _) ->
-                            -- TODO: handle error
+                        TFResult param (Err _) ->
                             Update.update freed
+                                |> Update.map (removeBigger param)
 
                         TFResult param (Ok stats) ->
                             case freed.runStatus of
@@ -271,11 +285,25 @@ update msg model =
                                                 (Dict.insert param.size stats)
                                                 graphDict
                                     in
-                                    Update.update
-                                        { freed
-                                            | runStatus =
-                                                Running params newResults
-                                        }
+                                    Update.update freed
+                                        |> Update.map
+                                            (if stats.median < timeout then
+                                                identity
+
+                                             else
+                                                removeBigger param
+                                            )
+                                        |> Update.map
+                                            (\removed ->
+                                                { removed
+                                                    | runStatus =
+                                                        if Deque.isEmpty removed.queue && WorkerQueue.areAllFree removed.workers then
+                                                            Finished params newResults
+
+                                                        else
+                                                            Running params newResults
+                                                }
+                                            )
 
                                 _ ->
                                     Update.update freed
@@ -289,6 +317,38 @@ update msg model =
     in
     ( newModel, cmd )
         |> Update.andThen trySend
+
+
+removeBigger : Param -> Model -> Model
+removeBigger param model =
+    let
+        filter : Param -> Bool
+        filter p =
+            (p.graphName /= param.graphName)
+                || (p.function /= param.function)
+                || (p.size < param.size)
+    in
+    { model
+        | queue =
+            Deque.filter filter
+                model.queue
+        , runStatus =
+            case model.runStatus of
+                LoadingParams ->
+                    LoadingParams
+
+                Ready params ->
+                    Ready (List.filter filter params)
+
+                Running params results ->
+                    Running (List.filter filter params) results
+
+                Finished params results ->
+                    Finished (List.filter filter params) results
+
+                Stopped params results ->
+                    Stopped (List.filter filter params) results
+    }
 
 
 upsert : comparable -> (Dict comparable2 v -> Dict comparable2 v) -> Dict comparable (Dict comparable2 v) -> Dict comparable (Dict comparable2 v)
@@ -319,7 +379,7 @@ port fromBackend : ({ index : Int, data : Value } -> msg) -> Sub msg
 port toBackend : { index : Int, data : Value } -> Cmd msg
 
 
-sendToBackend : ToBackend -> Model -> Model
+sendToBackend : Param -> Model -> Model
 sendToBackend tb model =
     { model | queue = Deque.pushBack tb model.queue }
 
@@ -327,18 +387,18 @@ sendToBackend tb model =
 trySend : Model -> ( Model, Cmd Msg )
 trySend model =
     let
-        ( freeWorker, freeWorkers ) =
-            Deque.popFront model.freeWorkers
+        ( freeWorker, workers ) =
+            WorkerQueue.getOne model.workers
 
         ( toSend, queue ) =
             Deque.popFront model.queue
     in
     case ( freeWorker, toSend ) of
-        ( Just index, Just tb ) ->
-            ( { model | freeWorkers = freeWorkers, queue = queue }
+        ( Just index, Just param ) ->
+            ( { model | workers = workers, queue = queue }
             , toBackend
                 { index = index
-                , data = Codec.encodeToValue Codecs.toBackendCodec tb
+                , data = Codec.encodeToValue Codecs.toBackendCodec (TBParam param)
                 }
             )
                 |> Update.andThen trySend

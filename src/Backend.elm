@@ -17,7 +17,10 @@ params =
 
         functions : List Function
         functions =
-            [ SlowFibonacci, FastFibonacci ]
+            [ FastFibonacci
+
+            -- , SlowFibonacci
+            ]
 
         sizes : List Int
         sizes =
