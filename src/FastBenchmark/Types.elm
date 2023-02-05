@@ -1,6 +1,5 @@
 module FastBenchmark.Types exposing
     ( Config
-    , statsCodec
     , Index, Param, Stats, ToBackend(..), ToFrontend(..), toBackendCodec, toFrontendCodec
     )
 
@@ -10,11 +9,6 @@ module FastBenchmark.Types exposing
 # Types
 
 @docs Config
-
-
-# Codec
-
-@docs statsCodec
 
 -}
 
