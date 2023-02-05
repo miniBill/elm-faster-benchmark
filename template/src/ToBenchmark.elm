@@ -1,7 +1,7 @@
 module ToBenchmark exposing (Function, Graph, config)
 
+import Array exposing (Array)
 import Codec exposing (Codec)
-import Dict exposing (Dict)
 import FastBenchmark.Types exposing (Config, Param)
 
 
@@ -99,13 +99,13 @@ toFunction param =
 fibSlow : Int -> Int
 fibSlow =
     let
-        go : Dict Int Int -> Int -> ( Int, Dict Int Int )
+        go : Array Int -> Int -> ( Int, Array Int )
         go acc n =
             if n < 2 then
                 ( 1, acc )
 
             else
-                case Dict.get n acc of
+                case Array.get n acc of
                     Just r ->
                         ( r, acc )
 
@@ -117,9 +117,9 @@ fibSlow =
                             ( f2, acc2 ) =
                                 go acc1 (n - 2)
                         in
-                        ( f1 + f2, Dict.insert n (f1 + f2) acc2 )
+                        ( f1 + f2, Array.push (f1 + f2) acc2 )
     in
-    go Dict.empty
+    go Array.empty
         >> Tuple.first
 
 
