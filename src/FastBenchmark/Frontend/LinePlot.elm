@@ -9,10 +9,10 @@ import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
 import TypedSvg exposing (circle, g, line, svg, text_)
-import TypedSvg.Attributes exposing (class, fill, opacity, stroke, transform, viewBox)
+import TypedSvg.Attributes exposing (class, fill, opacity, stroke, textAnchor, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, r, strokeWidth, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Opacity(..), Paint(..), Transform(..))
+import TypedSvg.Types exposing (AnchorAlignment(..), Opacity(..), Paint(..), Transform(..))
 
 
 type alias Data =
@@ -68,7 +68,16 @@ yScale max =
 
 xAxis : Data -> Svg msg
 xAxis model =
-    Axis.bottom [] (xScale model)
+    g []
+        [ Axis.bottom [] (xScale model)
+        , text_
+            [ fontSize 14
+            , x <| w - padding * 2
+            , y padding
+            , textAnchor AnchorEnd
+            ]
+            [ TypedSvg.Core.text "Size of input" ]
+        ]
 
 
 yAxis : Float -> Svg msg
@@ -82,6 +91,12 @@ yAxis max =
             ]
             [ TypedSvg.Core.text "Duration (ms)" ]
         ]
+
+
+grid : Float -> List (Svg msg)
+grid max =
+    List.indexedMap (yGridLine max) <|
+        Scale.ticks (yScale max) 9
 
 
 column : Float -> ContinuousScale Float -> Color -> Dict Int Stats -> List (Svg msg)
@@ -192,8 +207,12 @@ view model =
                 |> List.maximum
                 |> Maybe.withDefault 0
     in
-    svg [ viewBox 0 0 w h, Html.Attributes.style "width" <| String.fromFloat w ++ "px" ]
-        [ g [ transform [ Translate padding (padding + 0.5) ] ] <| List.indexedMap (yGridLine max) <| Scale.ticks (yScale max) 9
+    svg
+        [ viewBox 0 0 w (h + padding)
+        , Html.Attributes.style "width" <| String.fromFloat w ++ "px"
+        ]
+        [ g [ transform [ Translate padding (padding + 0.5) ] ]
+            (grid max)
         , g [ transform [ Translate (padding - 1) (h - padding) ] ]
             [ xAxis model ]
         , g [ transform [ Translate (padding - 1) padding ] ]

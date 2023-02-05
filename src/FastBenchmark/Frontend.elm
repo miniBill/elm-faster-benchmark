@@ -6,7 +6,7 @@ import Color exposing (Color)
 import Color.Oklch
 import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Element exposing (Attribute, Element, alignBottom, alignTop, centerY, column, el, fill, height, px, row, shrink, table, text, width, wrappedRow)
+import Element exposing (Attribute, Element, alignBottom, alignTop, centerY, column, el, fill, height, paragraph, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
 import FastBenchmark.Frontend.LinePlot
@@ -256,7 +256,8 @@ viewGraph graphName graph =
         ]
         [ el [ Font.bold ] <| text graphName
         , linePlot
-        , text ""
+        , paragraph [] [ text "Times (in ms) for a single execution." ]
+        , paragraph [] [ text "The three numbers are min, median and max." ]
         , viewTable graph toColor
         ]
 
