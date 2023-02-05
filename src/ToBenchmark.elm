@@ -154,6 +154,7 @@ graphs =
         )
         ratios
         overlaps
+        |> List.filter (\{ overlap, ratio } -> ratio == ( 1, 1 ) || overlap /= OverlapFull)
 
 
 ratios : List Ratio
