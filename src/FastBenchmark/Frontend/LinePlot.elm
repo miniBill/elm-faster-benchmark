@@ -1,9 +1,9 @@
-module Frontend.LinePlot exposing (Data, Datum, view)
+module FastBenchmark.Frontend.LinePlot exposing (Data, Datum, view)
 
 import Axis
-import Backend.Benchmark exposing (Stats)
 import Color exposing (Color)
 import Dict exposing (Dict)
+import FastBenchmark.Types exposing (Stats)
 import Html.Attributes
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)

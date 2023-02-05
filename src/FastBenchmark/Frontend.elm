@@ -1,20 +1,19 @@
-module Frontend.App exposing (Flags, Model, Msg, Ports, Program, RunStatus, app)
+module FastBenchmark.Frontend exposing (Flags, Model, Msg, Ports, Program, RunStatus, app)
 
-import Backend.Benchmark exposing (Stats)
 import Browser
 import Codec exposing (Codec, Value)
 import Color exposing (Color)
 import Color.Oklch
-import Common.Types as Types exposing (Config, Index, Param, ToBackend(..), ToFrontend(..))
 import Deque exposing (Deque)
 import Dict exposing (Dict)
 import Element exposing (Element, alignTop, centerY, column, el, fill, height, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
-import Frontend.LinePlot
-import Frontend.Theme as Theme
-import Frontend.Update as Update
-import Frontend.WorkerQueue as WorkerQueue exposing (WorkerQueue)
+import FastBenchmark.Frontend.LinePlot
+import FastBenchmark.Frontend.Theme as Theme
+import FastBenchmark.Frontend.Update as Update
+import FastBenchmark.Frontend.WorkerQueue as WorkerQueue exposing (WorkerQueue)
+import FastBenchmark.Types as Types exposing (Config, Index, Param, Stats, ToBackend(..), ToFrontend(..))
 import List.Extra
 
 
@@ -243,7 +242,7 @@ viewGraph graphName graph =
             graph
                 |> Dict.toList
                 |> List.map (\( functionName, data ) -> ( toColor functionName, data ))
-                |> Frontend.LinePlot.view
+                |> FastBenchmark.Frontend.LinePlot.view
                 |> Element.html
                 |> el []
     in

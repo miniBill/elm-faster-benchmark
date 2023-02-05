@@ -1,16 +1,16 @@
 port module Frontend exposing (main)
 
 import Codec exposing (Value)
-import Frontend.App
+import FastBenchmark.Frontend
 import ToBenchmark exposing (Function, Graph)
 
 
-main : Frontend.App.Program Graph Function
+main : FastBenchmark.Frontend.Program Graph Function
 main =
-    Frontend.App.app ToBenchmark.config ports
+    FastBenchmark.Frontend.app ToBenchmark.config ports
 
 
-ports : Frontend.App.Ports msg
+ports : FastBenchmark.Frontend.Ports msg
 ports =
     { terminateAll = terminateAll
     , fromBackend = fromBackend

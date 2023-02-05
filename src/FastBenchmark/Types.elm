@@ -1,6 +1,23 @@
-module Common.Types exposing (Config, Index, Param, ToBackend(..), ToFrontend(..), toBackendCodec, toFrontendCodec)
+module FastBenchmark.Types exposing
+    ( Config
+    , statsCodec
+    , Index, Param, Stats, ToBackend(..), ToFrontend(..), toBackendCodec, toFrontendCodec
+    )
 
-import Backend.Benchmark exposing (Stats)
+{-|
+
+
+# Types
+
+@docs Config
+
+
+# Codec
+
+@docs statsCodec
+
+-}
+
 import Codec exposing (Codec)
 
 
@@ -21,9 +38,35 @@ type alias Config graph function =
     }
 
 
+type alias Stats =
+    { firstQuartile : Float
+    , median : Float
+    , thirdQuartile : Float
+    , max : Float
+    , min : Float
+    , outliers : List Float
+    }
+
+
 type ToFrontend graph function
     = TFParams { timeout : Maybe Float, params : List (Param graph function) }
     | TFResult (Param graph function) (Result String Stats)
+
+
+type ToBackend graph function
+    = TBParams
+    | TBRun (Param graph function)
+
+
+type alias Index =
+    Int
+
+
+type alias Param graph function =
+    { graph : graph
+    , function : function
+    , size : Int
+    }
 
 
 toFrontendCodec : Config graph function -> Codec (ToFrontend graph function)
@@ -54,13 +97,8 @@ toFrontendCodec config =
         |> Codec.variant2 "TFResult"
             TFResult
             paramCodec_
-            (Codec.result Codec.string Backend.Benchmark.statsCodec)
+            (Codec.result Codec.string statsCodec)
         |> Codec.buildCustom
-
-
-type ToBackend graph function
-    = TBParams
-    | TBRun (Param graph function)
 
 
 toBackendCodec : Config graph function -> Codec (ToBackend graph function)
@@ -79,17 +117,6 @@ toBackendCodec config =
         |> Codec.buildCustom
 
 
-type alias Index =
-    Int
-
-
-type alias Param graph function =
-    { graph : graph
-    , function : function
-    , size : Int
-    }
-
-
 paramCodec : Config graph function -> Codec (Param graph function)
 paramCodec { graphCodec, functionCodec } =
     Codec.object
@@ -102,4 +129,25 @@ paramCodec { graphCodec, functionCodec } =
         |> Codec.field "graph" .graph graphCodec
         |> Codec.field "function" .function functionCodec
         |> Codec.field "size" .size Codec.int
+        |> Codec.buildObject
+
+
+statsCodec : Codec Stats
+statsCodec =
+    Codec.object
+        (\firstQuartile median thirdQuartile max min outliers ->
+            { firstQuartile = firstQuartile
+            , median = median
+            , thirdQuartile = thirdQuartile
+            , max = max
+            , min = min
+            , outliers = outliers
+            }
+        )
+        |> Codec.field "firstQuartile" .firstQuartile Codec.float
+        |> Codec.field "median" .median Codec.float
+        |> Codec.field "thirdQuartile" .thirdQuartile Codec.float
+        |> Codec.field "max" .max Codec.float
+        |> Codec.field "min" .min Codec.float
+        |> Codec.field "outliers" .outliers (Codec.list Codec.float)
         |> Codec.buildObject

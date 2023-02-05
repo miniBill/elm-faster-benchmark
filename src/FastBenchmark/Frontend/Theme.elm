@@ -1,4 +1,4 @@
-module Frontend.Theme exposing (borderRounded, borderWidth, button, padding, spacing)
+module FastBenchmark.Frontend.Theme exposing (borderRounded, borderWidth, button, padding, spacing)
 
 import Element exposing (Attribute, Element)
 import Element.Border as Border

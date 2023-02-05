@@ -1,9 +1,9 @@
 module ToBenchmark exposing (Function, Graph, Overlap, Ratio, config)
 
 import Codec exposing (Codec)
-import Common.Types exposing (Config, Param)
 import Dict exposing (Dict)
 import DictDotDot as DDD
+import FastBenchmark.Types exposing (Config, Param)
 import FastIntersect
 import List.Extra
 import Random

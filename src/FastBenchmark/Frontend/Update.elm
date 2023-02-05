@@ -1,4 +1,4 @@
-module Frontend.Update exposing (addCmd, andThen, map, update)
+module FastBenchmark.Frontend.Update exposing (addCmd, andThen, map, update)
 
 
 update : model -> ( model, Cmd msg )

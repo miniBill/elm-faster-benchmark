@@ -1,7 +1,6 @@
-module Backend.Benchmark exposing
+module FastBenchmark.Backend.Benchmark exposing
     ( run
-    , Stats, computeStatistics
-    , statsCodec
+    , computeStatistics
     )
 
 {-|
@@ -14,17 +13,12 @@ module Backend.Benchmark exposing
 
 # Calculate statistics
 
-@docs Stats, computeStatistics
-
-
-# Codec
-
-@docs statsCodec
+@docs computeStatistics
 
 -}
 
 import Benchmark.LowLevel exposing (Operation)
-import Codec exposing (Codec)
+import FastBenchmark.Types exposing (Stats)
 import Statistics
 import Task exposing (Task)
 
@@ -60,16 +54,6 @@ run operation =
                     Benchmark.LowLevel.UnknownError msg ->
                         msg
             )
-
-
-type alias Stats =
-    { firstQuartile : Float
-    , median : Float
-    , thirdQuartile : Float
-    , max : Float
-    , min : Float
-    , outliers : List Float
-    }
 
 
 computeStatistics : List Float -> Stats
@@ -162,24 +146,3 @@ findLastSuchThat f orig =
                         ( Just h, t )
     in
     go Nothing orig
-
-
-statsCodec : Codec Stats
-statsCodec =
-    Codec.object
-        (\firstQuartile median thirdQuartile max min outliers ->
-            { firstQuartile = firstQuartile
-            , median = median
-            , thirdQuartile = thirdQuartile
-            , max = max
-            , min = min
-            , outliers = outliers
-            }
-        )
-        |> Codec.field "firstQuartile" .firstQuartile Codec.float
-        |> Codec.field "median" .median Codec.float
-        |> Codec.field "thirdQuartile" .thirdQuartile Codec.float
-        |> Codec.field "max" .max Codec.float
-        |> Codec.field "min" .min Codec.float
-        |> Codec.field "outliers" .outliers (Codec.list Codec.float)
-        |> Codec.buildObject

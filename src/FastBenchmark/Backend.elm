@@ -1,9 +1,9 @@
-module Backend.App exposing (Flags, Model, Msg, Ports, Program, app)
+module FastBenchmark.Backend exposing (Flags, Model, Msg, Ports, Program, app)
 
-import Backend.Benchmark
 import Benchmark.LowLevel
 import Codec exposing (Value)
-import Common.Types as Types exposing (Config, Param, ToBackend(..), ToFrontend(..))
+import FastBenchmark.Backend.Benchmark
+import FastBenchmark.Types as Types exposing (Config, Param, Stats, ToBackend(..), ToFrontend(..))
 import List.Extra
 import Task
 
@@ -89,14 +89,14 @@ toCmd config ports msg =
                 operation =
                     Benchmark.LowLevel.operation function
             in
-            Backend.Benchmark.run operation
+            FastBenchmark.Backend.Benchmark.run operation
                 |> Task.attempt (RunResult param)
 
         RunResult param (Ok res) ->
             let
-                stats : Backend.Benchmark.Stats
+                stats : Stats
                 stats =
-                    Backend.Benchmark.computeStatistics res
+                    FastBenchmark.Backend.Benchmark.computeStatistics res
             in
             sendToFrontend config ports (TFResult param (Ok stats))
 
