@@ -1,4 +1,21 @@
-module FastBenchmark.Frontend exposing (Flags, Model, Msg, Ports, Program, RunStatus, app)
+module FastBenchmark.Frontend exposing
+    ( app
+    , Flags, Msg, Model, Ports, Program
+    )
+
+{-|
+
+
+# Main application
+
+@docs app
+
+
+# Types
+
+@docs Flags, Msg, Model, Ports, Program
+
+-}
 
 import Browser
 import Codec exposing (Codec, Value)
@@ -17,6 +34,8 @@ import FastBenchmark.Types as Types exposing (Config, Index, Param, Stats, ToBac
 import List.Extra
 
 
+{-| Ports needed for the frontend.
+-}
 type alias Ports msg =
     { terminateAll : {} -> Cmd msg
     , fromBackend : ({ index : Int, data : Value } -> msg) -> Sub msg
@@ -24,16 +43,21 @@ type alias Ports msg =
     }
 
 
+{-| Flags needed for the frontend.
+-}
 type alias Flags =
     { workersCount : Int
     }
 
 
-type alias Model graph function =
-    { workers : WorkerQueue
-    , queue : Deque (Param graph function)
-    , runStatus : RunStatus graph function
-    }
+{-| The frontend model.
+-}
+type Model graph function
+    = Model
+        { workers : WorkerQueue
+        , queue : Deque (Param graph function)
+        , runStatus : RunStatus graph function
+        }
 
 
 type alias Results =
@@ -56,6 +80,8 @@ type RunStatus graph function
     | Stopped (Inputs graph function) Results
 
 
+{-| The message type for the frontend.
+-}
 type Msg graph function
     = FromBackend Index (ToFrontend graph function)
     | Start (Inputs graph function)
@@ -69,10 +95,14 @@ type alias Inputs graph function =
     }
 
 
+{-| A convenient type for a frontend `Program`.
+-}
 type alias Program graph function =
     Platform.Program Flags (Model graph function) (Msg graph function)
 
 
+{-| Main frontend app.
+-}
 app : Config graph function -> Ports (Msg graph function) -> Program graph function
 app config ports =
     Browser.element
@@ -94,10 +124,11 @@ init config ports flags =
     let
         model : Model graph function
         model =
-            { workers = WorkerQueue.init flags.workersCount
-            , queue = Deque.empty
-            , runStatus = LoadingParams
-            }
+            Model
+                { workers = WorkerQueue.init flags.workersCount
+                , queue = Deque.empty
+                , runStatus = LoadingParams
+                }
     in
     Update.update model
         |> Update.addCmd
@@ -109,7 +140,7 @@ init config ports flags =
 
 
 view : Model graph function -> Element (Msg graph function)
-view model =
+view (Model model) =
     let
         workersLine : Element msg
         workersLine =
@@ -374,37 +405,38 @@ formatFloat f =
 
 
 update : Config graph function -> Ports (Msg graph function) -> Msg graph function -> Model graph function -> ( Model graph function, Cmd (Msg graph function) )
-update config ports msg model =
+update config ports msg (Model model) =
     let
         ( newModel, cmd ) =
             case msg of
                 Start inputs ->
                     Update.update
                         (List.foldl sendToBackend
-                            { model | runStatus = Running inputs Dict.empty }
+                            (Model { model | runStatus = Running inputs Dict.empty })
                             inputs.params
                         )
 
                 Stop params results ->
-                    ( { model
-                        | runStatus = Stopped params results
-                        , workers = WorkerQueue.init (WorkerQueue.totalSize model.workers)
-                        , queue = Deque.empty
-                      }
+                    ( Model
+                        { model
+                            | runStatus = Stopped params results
+                            , workers = WorkerQueue.init (WorkerQueue.totalSize model.workers)
+                            , queue = Deque.empty
+                        }
                     , ports.terminateAll {}
                     )
 
                 FromBackend index fb ->
                     let
-                        freed : Model graph function
-                        freed =
-                            { model
-                                | workers = WorkerQueue.addFree index model.workers
-                            }
+                        (Model freed) =
+                            Model
+                                { model
+                                    | workers = WorkerQueue.addFree index model.workers
+                                }
                     in
                     case fb of
                         TFResult param (Err _) ->
-                            Update.update freed
+                            Update.update (Model freed)
                                 |> Update.map (removeBigger param)
 
                         TFResult param (Ok stats) ->
@@ -427,7 +459,7 @@ update config ports msg model =
                                                 )
                                                 oldResults
                                     in
-                                    Update.update freed
+                                    Update.update (Model freed)
                                         |> Update.map
                                             (if stats.median < Maybe.withDefault stats.median inputs.timeout then
                                                 identity
@@ -436,33 +468,34 @@ update config ports msg model =
                                                 removeBigger param
                                             )
                                         |> Update.map
-                                            (\removed ->
-                                                { removed
-                                                    | runStatus =
-                                                        if Deque.isEmpty removed.queue && WorkerQueue.areAllFree removed.workers then
-                                                            Finished inputs newResults
+                                            (\(Model removed) ->
+                                                Model
+                                                    { removed
+                                                        | runStatus =
+                                                            if Deque.isEmpty removed.queue && WorkerQueue.areAllFree removed.workers then
+                                                                Finished inputs newResults
 
-                                                        else
-                                                            Running inputs newResults
-                                                }
+                                                            else
+                                                                Running inputs newResults
+                                                    }
                                             )
 
                                 _ ->
-                                    Update.update freed
+                                    Update.update (Model freed)
 
                         TFParams params ->
                             Update.update
-                                { freed | runStatus = Ready params }
+                                (Model { freed | runStatus = Ready params })
 
                 Nop ->
-                    Update.update model
+                    Update.update (Model model)
     in
     ( newModel, cmd )
         |> Update.andThen (trySend config ports)
 
 
 removeBigger : Param graph function -> Model graph function -> Model graph function
-removeBigger param model =
+removeBigger param (Model model) =
     let
         filter : Param graph function -> Bool
         filter p =
@@ -491,6 +524,7 @@ removeBigger param model =
                 Stopped inputs results ->
                     Stopped { inputs | params = List.filter filter inputs.params } results
     }
+        |> Model
 
 
 upsert : comparable -> (Dict comparable2 v -> Dict comparable2 v) -> Dict comparable (Dict comparable2 v) -> Dict comparable (Dict comparable2 v)
@@ -513,12 +547,13 @@ subscriptions config ports =
 
 
 sendToBackend : Param graph function -> Model graph function -> Model graph function
-sendToBackend tb model =
-    { model | queue = Deque.pushBack tb model.queue }
+sendToBackend tb (Model model) =
+    Model
+        { model | queue = Deque.pushBack tb model.queue }
 
 
 trySend : Config graph function -> Ports (Msg graph function) -> Model graph function -> ( Model graph function, Cmd (Msg graph function) )
-trySend config ports model =
+trySend config ports (Model model) =
     let
         ( freeWorker, workers ) =
             WorkerQueue.getOne model.workers
@@ -528,7 +563,7 @@ trySend config ports model =
     in
     case ( freeWorker, toSend ) of
         ( Just index, Just param ) ->
-            ( { model | workers = workers, queue = queue }
+            ( Model { model | workers = workers, queue = queue }
             , ports.toBackend
                 { index = index
                 , data = Codec.encodeToValue (Types.toBackendCodec config) (TBRun param)
@@ -537,7 +572,7 @@ trySend config ports model =
                 |> Update.andThen (trySend config ports)
 
         _ ->
-            ( model, Cmd.none )
+            ( Model model, Cmd.none )
 
 
 receiveFromBackend : Config graph function -> Ports (Msg graph function) -> Sub (Msg graph function)

@@ -1,6 +1,7 @@
 module FastBenchmark.Types exposing
-    ( Config
-    , Index, Param, Stats, ToBackend(..), ToFrontend(..), toBackendCodec, toFrontendCodec
+    ( Config, Stats, Param
+    , ToFrontend(..), ToBackend(..), Index
+    , toFrontendCodec, toBackendCodec
     )
 
 {-|
@@ -8,13 +9,25 @@ module FastBenchmark.Types exposing
 
 # Types
 
-@docs Config
+@docs Config, Stats, Param
+
+
+# Messages
+
+@docs ToFrontend, ToBackend, Index
+
+
+# Codecs
+
+@docs toFrontendCodec, toBackendCodec
 
 -}
 
 import Codec exposing (Codec)
 
 
+{-| All the information needed to run a benchmark.
+-}
 type alias Config graph function =
     { graphToString : graph -> String
     , graphCodec : Codec graph
@@ -32,6 +45,8 @@ type alias Config graph function =
     }
 
 
+{-| Statistics un run times.
+-}
 type alias Stats =
     { firstQuartile : Float
     , median : Float
@@ -42,20 +57,28 @@ type alias Stats =
     }
 
 
+{-| Message that gets sent to the frontend.
+-}
 type ToFrontend graph function
     = TFParams { timeout : Maybe Float, params : List (Param graph function) }
     | TFResult (Param graph function) (Result String Stats)
 
 
+{-| Message that gets sent to the backend.
+-}
 type ToBackend graph function
     = TBParams
     | TBRun (Param graph function)
 
 
+{-| Index of the Web Worker.
+-}
 type alias Index =
     Int
 
 
+{-| Parameters needed to measure the timing.
+-}
 type alias Param graph function =
     { graph : graph
     , function : function
@@ -63,6 +86,8 @@ type alias Param graph function =
     }
 
 
+{-| `Codec` used to send messages to the frontend.
+-}
 toFrontendCodec : Config graph function -> Codec (ToFrontend graph function)
 toFrontendCodec config =
     let
@@ -95,6 +120,8 @@ toFrontendCodec config =
         |> Codec.buildCustom
 
 
+{-| `Codec` used to send messages to the backend.
+-}
 toBackendCodec : Config graph function -> Codec (ToBackend graph function)
 toBackendCodec config =
     Codec.custom

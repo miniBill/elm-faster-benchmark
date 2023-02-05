@@ -1,4 +1,21 @@
-module FastBenchmark.Backend exposing (Flags, Model, Msg, Ports, Program, app)
+module FastBenchmark.Backend exposing
+    ( app
+    , Msg, Ports, Program
+    )
+
+{-|
+
+
+# Main application
+
+@docs app
+
+
+# Types
+
+@docs Msg, Ports, Program
+
+-}
 
 import Benchmark.LowLevel
 import Codec exposing (Value)
@@ -8,6 +25,8 @@ import List.Extra
 import Task
 
 
+{-| Ports needed for the backend.
+-}
 type alias Ports msg =
     { fromFrontend : (Value -> msg) -> Sub msg
     , toFrontend : Value -> Cmd msg
@@ -28,28 +47,26 @@ params config =
         config.functions
 
 
-type alias Flags =
-    {}
-
-
-type alias Model =
-    {}
-
-
+{-| The message type for the backend.
+-}
 type Msg graph function
     = FromFrontend (ToBackend graph function)
     | RunResult (Param graph function) (Result String (List Float))
     | Nop
 
 
+{-| A convenient type for a backend `Program`.
+-}
 type alias Program graph function =
-    Platform.Program Flags Model (Msg graph function)
+    Platform.Program {} {} (Msg graph function)
 
 
+{-| Main backend app.
+-}
 app : Config graph function -> Ports (Msg graph function) -> Program graph function
 app config ports =
     Platform.worker
-        { init = init
+        { init = \_ -> ( {}, Cmd.none )
         , update = \msg model -> ( model, toCmd config ports msg )
         , subscriptions =
             let
@@ -59,11 +76,6 @@ app config ports =
             in
             \_ -> subs
         }
-
-
-init : Flags -> ( Model, Cmd msg )
-init _ =
-    ( {}, Cmd.none )
 
 
 toCmd : Config graph function -> Ports (Msg graph function) -> Msg graph function -> Cmd (Msg graph function)
