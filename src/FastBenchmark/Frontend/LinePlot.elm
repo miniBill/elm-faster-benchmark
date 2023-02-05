@@ -8,11 +8,11 @@ import Html.Attributes
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
-import TypedSvg exposing (circle, defs, g, line, linearGradient, stop, svg, text_)
-import TypedSvg.Attributes exposing (class, fill, id, offset, opacity, stopColor, stroke, transform, viewBox)
+import TypedSvg exposing (circle, g, line, svg, text_)
+import TypedSvg.Attributes exposing (class, fill, opacity, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, r, strokeWidth, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Length(..), Opacity(..), Paint(..), Transform(..))
+import TypedSvg.Types exposing (Opacity(..), Paint(..), Transform(..))
 
 
 type alias Data =
