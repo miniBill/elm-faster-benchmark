@@ -19,6 +19,7 @@
             "gampleman/elm-visualization": "2.3.0",
             "mdgriffith/elm-ui": "1.1.8",
             "miniBill/elm-codec": "2.0.0",
+            "miniBill/elm-oklch": "1.0.0",
             "showell/dict-dot-dot": "1.0.1"
         },
         "indirect": {

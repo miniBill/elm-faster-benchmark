@@ -4,6 +4,7 @@ import Backend.Benchmark exposing (Stats)
 import Browser
 import Codec exposing (Codec, Value)
 import Color exposing (Color)
+import Color.Oklch
 import Common.Types as Types exposing (Config, Index, Param, ToBackend(..), ToFrontend(..))
 import Deque exposing (Deque)
 import Dict exposing (Dict)
@@ -11,7 +12,6 @@ import Element exposing (Element, alignTop, centerY, column, el, fill, height, p
 import Element.Background as Background
 import Element.Font as Font
 import Frontend.LinePlot
-import Frontend.OkLch
 import Frontend.Theme as Theme
 import Frontend.Update as Update
 import Frontend.WorkerQueue as WorkerQueue exposing (WorkerQueue)
@@ -221,14 +221,14 @@ viewGraph graphName graph =
             List.indexedMap
                 (\i functionName ->
                     let
-                        ( r, g, b ) =
-                            Frontend.OkLch.oklchToSRGB
-                                ( 0.75
-                                , 0.126
-                                , toFloat i * 360 / toFloat colorCount
-                                )
+                        color : Color.Oklch.Oklch
+                        color =
+                            Color.Oklch.oklch
+                                0.75
+                                0.126
+                                (toFloat i / toFloat colorCount)
                     in
-                    ( functionName, Color.rgb r g b )
+                    ( functionName, Color.Oklch.toColor color )
                 )
                 (Dict.keys graph)
                 |> Dict.fromList
