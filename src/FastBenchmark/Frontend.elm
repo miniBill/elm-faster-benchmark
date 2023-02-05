@@ -6,7 +6,7 @@ import Color exposing (Color)
 import Color.Oklch
 import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, centerY, column, el, fill, height, px, row, shrink, table, text, width, wrappedRow)
+import Element exposing (Attribute, Element, alignBottom, alignTop, centerY, column, el, fill, height, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
 import FastBenchmark.Frontend.LinePlot
@@ -256,6 +256,7 @@ viewGraph graphName graph =
         ]
         [ el [ Font.bold ] <| text graphName
         , linePlot
+        , text ""
         , viewTable graph toColor
         ]
 
@@ -288,9 +289,9 @@ viewTable times toColor =
                         )
                     )
 
-        header : String -> Maybe Color -> Element msg
-        header label color =
-            row [ Font.bold, Element.spacing 3 ]
+        header : List (Attribute msg) -> String -> Maybe Color -> Element msg
+        header attrs label color =
+            row (Font.bold :: Element.spacing 3 :: attrs)
                 [ case color of
                     Nothing ->
                         Element.none
@@ -310,29 +311,54 @@ viewTable times toColor =
                             Element.none
                 , text label
                 ]
+
+        gray : Element msg -> Element msg
+        gray =
+            el
+                [ Font.color <| Element.rgb 0.3 0.3 0.3
+                , Font.size 16
+                , alignBottom
+                ]
+
+        float : Float -> Element msg
+        float f =
+            text <| formatFloat f
+
+        sizeColumn : Element.Column ( Int, Dict FunctionName Stats ) msg
+        sizeColumn =
+            { header = header [ Font.alignRight ] "size" Nothing
+            , view = \( size, _ ) -> el [ Font.alignRight ] <| text <| String.fromInt size
+            , width = shrink
+            }
+
+        columns : List (Element.Column ( Int, Dict FunctionName Stats ) msg)
+        columns =
+            List.map toColumn keys
+
+        toColumn : ( FunctionName, Color ) -> Element.Column ( Int, Dict FunctionName Stats ) msg
+        toColumn ( key, color ) =
+            let
+                cell : Dict FunctionName Stats -> Element msg
+                cell vals =
+                    case Dict.get key vals of
+                        Just stats ->
+                            row [ Element.spacing 4 ]
+                                [ gray <| float stats.min
+                                , float stats.median
+                                , gray <| float stats.max
+                                ]
+
+                        Nothing ->
+                            Element.none
+            in
+            { header = header [] key (Just color)
+            , view = \( _, vals ) -> cell vals
+            , width = shrink
+            }
     in
     table [ Theme.spacing ]
         { data = data
-        , columns =
-            { header = header "size" Nothing
-            , view = \( size, _ ) -> text <| String.fromInt size
-            , width = shrink
-            }
-                :: List.map
-                    (\( key, color ) ->
-                        { header = header key (Just color)
-                        , view =
-                            \( _, vals ) ->
-                                case Dict.get key vals of
-                                    Just stats ->
-                                        text <| formatFloat stats.min ++ "; " ++ formatFloat stats.median ++ "; " ++ formatFloat stats.max
-
-                                    Nothing ->
-                                        Element.none
-                        , width = shrink
-                        }
-                    )
-                    keys
+        , columns = sizeColumn :: columns
         }
 
 

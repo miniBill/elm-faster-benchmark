@@ -1,7 +1,7 @@
 .PHONY: all
 all: dist/index.html dist/favicon.ico
 
-ELM_FILES = $(shell find src -type f -name '*.elm')
+ELM_FILES = $(shell find src -type f -name '*.elm') $(shell find ../src -type f -name '*.elm')
 
 # ELM = elm
 # ELM_FLAGS = --debug

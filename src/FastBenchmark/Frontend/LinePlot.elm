@@ -8,9 +8,9 @@ import Html.Attributes
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
-import TypedSvg exposing (circle, defs, g, line, linearGradient, stop, svg)
+import TypedSvg exposing (circle, defs, g, line, linearGradient, stop, svg, text_)
 import TypedSvg.Attributes exposing (class, fill, id, offset, opacity, stopColor, stroke, transform, viewBox)
-import TypedSvg.Attributes.InPx exposing (cx, cy, r, strokeWidth, x1, x2, y1, y2)
+import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, r, strokeWidth, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Length(..), Opacity(..), Paint(..), Transform(..))
 
@@ -73,7 +73,15 @@ xAxis model =
 
 yAxis : Float -> Svg msg
 yAxis max =
-    Axis.left [ Axis.tickCount 9 ] (yScale max)
+    g []
+        [ Axis.left [ Axis.tickCount 9 ] (yScale max)
+        , text_
+            [ fontSize 14
+            , x -padding
+            , y <| -padding / 2
+            ]
+            [ TypedSvg.Core.text "Duration (ms)" ]
+        ]
 
 
 column : Float -> ContinuousScale Float -> Color -> Dict Int Stats -> List (Svg msg)
@@ -173,20 +181,6 @@ yGridLine max index tick =
         []
 
 
-gradient : Svg msg
-gradient =
-    linearGradient
-        [ id "linearGradient"
-        , TypedSvg.Attributes.x1 <| Percent 0.0
-        , TypedSvg.Attributes.y1 <| Percent 0.0
-        , TypedSvg.Attributes.x2 <| Percent 0.0
-        , TypedSvg.Attributes.y2 <| Percent 100.0
-        ]
-        [ stop [ offset "0%", stopColor "#e52d27" ] []
-        , stop [ offset "100%", stopColor "#b31217" ] []
-        ]
-
-
 view : Data -> Svg msg
 view model =
     let
@@ -199,8 +193,7 @@ view model =
                 |> Maybe.withDefault 0
     in
     svg [ viewBox 0 0 w h, Html.Attributes.style "width" <| String.fromFloat w ++ "px" ]
-        [ defs [] [ gradient ]
-        , g [ transform [ Translate padding (padding + 0.5) ] ] <| List.indexedMap (yGridLine max) <| Scale.ticks (yScale max) 9
+        [ g [ transform [ Translate padding (padding + 0.5) ] ] <| List.indexedMap (yGridLine max) <| Scale.ticks (yScale max) 9
         , g [ transform [ Translate (padding - 1) (h - padding) ] ]
             [ xAxis model ]
         , g [ transform [ Translate (padding - 1) padding ] ]

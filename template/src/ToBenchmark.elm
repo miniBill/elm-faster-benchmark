@@ -82,7 +82,8 @@ functions =
 
 sizes : List Int
 sizes =
-    List.range 1 1000
+    List.range 1 20
+        |> List.map (\n -> n * 100)
 
 
 toFunction : Param Graph Function -> () -> ()
