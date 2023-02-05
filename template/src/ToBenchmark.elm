@@ -23,6 +23,15 @@ config =
     }
 
 
+type Graph
+    = Simple
+
+
+graphs : List Graph
+graphs =
+    [ Simple ]
+
+
 graphToString : Graph -> String
 graphToString graph =
     case graph of
@@ -40,6 +49,18 @@ graphCodec =
         )
         |> Codec.variant0 "Simple" Simple
         |> Codec.buildCustom
+
+
+type Function
+    = Fast
+    | Slow
+
+
+functions : List Function
+functions =
+    [ Slow
+    , Fast
+    ]
 
 
 functionToString : Function -> String
@@ -66,18 +87,6 @@ functionCodec =
         |> Codec.variant0 "Slow" Slow
         |> Codec.variant0 "Fast" Fast
         |> Codec.buildCustom
-
-
-graphs : List Graph
-graphs =
-    [ Simple ]
-
-
-functions : List Function
-functions =
-    [ Slow
-    , Fast
-    ]
 
 
 sizes : List Int
@@ -141,12 +150,3 @@ ignore _ =
 timeout : Maybe Float
 timeout =
     Just 20
-
-
-type Graph
-    = Simple
-
-
-type Function
-    = Fast
-    | Slow
