@@ -101,25 +101,21 @@ fibSlow =
     let
         go : Array Int -> Int -> ( Int, Array Int )
         go acc n =
-            if n < 2 then
-                ( 1, acc )
+            case Array.get n acc of
+                Just r ->
+                    ( r, acc )
 
-            else
-                case Array.get n acc of
-                    Just r ->
-                        ( r, acc )
+                Nothing ->
+                    let
+                        ( f1, acc1 ) =
+                            go acc (n - 1)
 
-                    Nothing ->
-                        let
-                            ( f1, acc1 ) =
-                                go acc (n - 1)
-
-                            ( f2, acc2 ) =
-                                go acc1 (n - 2)
-                        in
-                        ( f1 + f2, Array.push (f1 + f2) acc2 )
+                        ( f2, acc2 ) =
+                            go acc1 (n - 2)
+                    in
+                    ( f1 + f2, Array.push (f1 + f2) acc2 )
     in
-    go Array.empty
+    go (Array.fromList [ 1, 1 ])
         >> Tuple.first
 
 
