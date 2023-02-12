@@ -20,8 +20,9 @@ module FastBenchmark.Backend exposing
 import Benchmark.LowLevel
 import Codec exposing (Value)
 import FastBenchmark.Backend.Benchmark
-import FastBenchmark.Types as Types exposing (Config, Param, Stats, ToBackend(..), ToFrontend(..))
-import List.Extra
+import FastBenchmark.Codecs as Codecs
+import FastBenchmark.Config as Config exposing (Config)
+import FastBenchmark.Types exposing (Param, Stats, ToBackend(..), ToFrontend(..))
 import Task
 
 
@@ -31,20 +32,6 @@ type alias Ports msg =
     { fromFrontend : (Value -> msg) -> Sub msg
     , toFrontend : Value -> Cmd msg
     }
-
-
-params : Config graph function -> List (Param graph function)
-params config =
-    List.Extra.lift3
-        (\size graph function ->
-            { size = size
-            , graph = graph
-            , function = function
-            }
-        )
-        config.sizes
-        config.graphs
-        config.functions
 
 
 {-| The message type for the backend.
@@ -93,8 +80,8 @@ toCmd config ports msg =
         FromFrontend TBParams ->
             sendToFrontend config ports <|
                 TFParams
-                    { timeout = config.timeout
-                    , params = params config
+                    { timeout = Config.timeout config
+                    , params = Config.params config
                     }
 
         Nop ->
@@ -129,7 +116,7 @@ doRun config try existing param =
     let
         function : () -> ()
         function =
-            config.toFunction param
+            Config.toFunction config param
 
         operation : Benchmark.LowLevel.Operation
         operation =
@@ -155,7 +142,7 @@ subscriptions config ports =
 
 sendToFrontend : Config graph function -> Ports (Msg graph function) -> ToFrontend graph function -> Cmd (Msg graph function)
 sendToFrontend config ports tf =
-    ports.toFrontend (Codec.encodeToValue (Types.toFrontendCodec config) tf)
+    ports.toFrontend (Codec.encodeToValue (Codecs.toFrontendCodec config) tf)
 
 
 receiveFromFrontend : Config graph function -> Ports (Msg graph function) -> Sub (Msg graph function)
@@ -163,7 +150,7 @@ receiveFromFrontend config ports =
     let
         codec : Codec.Codec (ToBackend graph function)
         codec =
-            Types.toBackendCodec config
+            Codecs.toBackendCodec config
     in
     ports.fromFrontend
         (\value ->

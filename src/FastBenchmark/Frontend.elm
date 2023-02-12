@@ -26,11 +26,13 @@ import Dict exposing (Dict)
 import Element exposing (Attribute, Element, alignBottom, alignRight, alignTop, centerX, centerY, column, el, fill, height, paragraph, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
+import FastBenchmark.Codecs as Codecs
+import FastBenchmark.Config as Config exposing (Config)
 import FastBenchmark.Frontend.LinePlot
 import FastBenchmark.Frontend.Theme as Theme
 import FastBenchmark.Frontend.Update as Update
 import FastBenchmark.Frontend.WorkerQueue as WorkerQueue exposing (WorkerQueue)
-import FastBenchmark.Types as Types exposing (Config, Index, Param, Stats, ToBackend(..), ToFrontend(..))
+import FastBenchmark.Types exposing (Index, Param, Stats, ToBackend(..), ToFrontend(..))
 import List.Extra
 
 
@@ -134,7 +136,7 @@ init config ports flags =
         |> Update.addCmd
             (ports.toBackend
                 { index = 0
-                , data = Codec.encodeToValue (Types.toBackendCodec config) TBParams
+                , data = Codec.encodeToValue (Codecs.toBackendCodec config) TBParams
                 }
             )
 
@@ -484,10 +486,10 @@ update config ports msg (Model model) =
                                         newResults : Dict GraphName (Dict FunctionName (Dict Int Stats))
                                         newResults =
                                             upsert
-                                                (config.graphToString param.graph)
+                                                (Config.graphToString config param.graph)
                                                 (\graphDict ->
                                                     upsert_
-                                                        (config.functionToString param.function)
+                                                        (Config.functionToString config param.function)
                                                         (Dict.insert param.size stats)
                                                         graphDict
                                                 )
@@ -600,7 +602,7 @@ trySend config ports (Model model) =
             ( Model { model | workers = workers, queue = queue }
             , ports.toBackend
                 { index = index
-                , data = Codec.encodeToValue (Types.toBackendCodec config) (TBRun param)
+                , data = Codec.encodeToValue (Codecs.toBackendCodec config) (TBRun param)
                 }
             )
                 |> Update.andThen (trySend config ports)
@@ -614,7 +616,7 @@ receiveFromBackend config ports =
     let
         codec : Codec (ToFrontend graph function)
         codec =
-            Types.toFrontendCodec config
+            Codecs.toFrontendCodec config
     in
     ports.fromBackend
         (\{ index, data } ->
