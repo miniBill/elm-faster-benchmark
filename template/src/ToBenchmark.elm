@@ -2,25 +2,28 @@ module ToBenchmark exposing (Function, Graph, config)
 
 import Array exposing (Array)
 import Codec exposing (Codec)
-import FastBenchmark.Types exposing (Config, Param)
+import FastBenchmark.Config exposing (Config)
+import FastBenchmark.Types exposing (Param)
 
 
 config : Config Graph Function
 config =
-    { graphTitle = graphTitle
-    , graphCodec = graphCodec
-    , functionToString = functionToString
-    , functionCodec = functionCodec
+    FastBenchmark.Config.init
+        { graphTitle = graphTitle
+        , graphCodec = graphCodec
+        , functionToString = functionToString
+        , functionCodec = functionCodec
 
-    --
-    , graphs = graphs
-    , functions = functions
-    , sizes = sizes
-    , toFunction = toFunction
-
-    --
-    , timeout = timeout
-    }
+        --
+        , graphs = graphs
+        , graphData =
+            \_ ->
+                { functions = functions
+                , sizes = sizes
+                }
+        , runFunction = runFunction
+        }
+        |> FastBenchmark.Config.withTimeout timeout
 
 
 type Graph
@@ -95,8 +98,8 @@ sizes =
         |> List.map (\n -> n * 100)
 
 
-toFunction : Param Graph Function -> () -> ()
-toFunction param =
+runFunction : Param Graph Function -> () -> ()
+runFunction param =
     case param.function of
         Slow ->
             \_ -> ignore <| fibSlow param.size
@@ -147,6 +150,6 @@ ignore _ =
     ()
 
 
-timeout : Maybe Float
+timeout : Float
 timeout =
-    Just 20
+    20
