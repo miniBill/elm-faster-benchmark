@@ -23,7 +23,7 @@ import Color exposing (Color)
 import Color.Oklch
 import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Element exposing (Attribute, Element, alignBottom, alignRight, alignTop, centerX, centerY, column, el, fill, height, paragraph, px, row, shrink, table, text, width, wrappedRow)
+import Element exposing (Attribute, Element, alignBottom, alignRight, alignTop, centerY, column, el, fill, height, paragraph, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
 import FastBenchmark.Codecs as Codecs
@@ -190,7 +190,7 @@ view (Model model) =
                     , viewResults results
                     )
 
-        left : Element msg
+        left : Element (Msg graph function)
         left =
             column
                 [ Theme.padding
@@ -199,6 +199,7 @@ view (Model model) =
                 ]
                 [ workersLine
                 , text statusText
+                , Theme.button [] button
                 ]
     in
     column
@@ -212,7 +213,6 @@ view (Model model) =
             , width fill
             ]
             [ left
-            , el [ centerX ] <| Theme.button [] button
             , explainer
             ]
         , bottom
@@ -227,7 +227,9 @@ explainer =
         , alignRight
         ]
         [ paragraph [] [ text "Times in the tables are in ms and for a single execution." ]
-        , paragraph [] [ text "The three numbers are min, median and max." ]
+        , paragraph [] [ text "The three numbers are min, median and max (not counting outliers)." ]
+        , paragraph [] [ text "Those are also the three visible lines in the graph." ]
+        , paragraph [] [ text "The dots are the outliers." ]
         ]
 
 
