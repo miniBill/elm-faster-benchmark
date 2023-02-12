@@ -13,7 +13,7 @@ import Random
 config : Config Graph Function
 config =
     FastBenchmark.Config.init
-        { graphToString = graphToString
+        { graphTitle = graphTitle
         , graphCodec = graphCodec
         , functionToString = functionToString
         , functionCodec = functionCodec
@@ -46,8 +46,8 @@ type Overlap
     | OverlapNoneEvenOdd
 
 
-graphToString : Graph -> String
-graphToString graph =
+graphTitle : Graph -> String
+graphTitle graph =
     ratioToString graph.ratio ++ " " ++ overlapToString graph.overlap
 
 

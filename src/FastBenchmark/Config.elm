@@ -2,7 +2,7 @@ module FastBenchmark.Config exposing
     ( Config
     , init, withTimeout
     , params
-    , functionToString, graphToString
+    , functionToString, graphTitle
     , timeout, runFunction
     , functionCodec, graphCodec
     )
@@ -27,7 +27,7 @@ module FastBenchmark.Config exposing
 
 # Visualization
 
-@docs functionToString, graphToString
+@docs functionToString, graphTitle
 
 
 # Other configuration
@@ -50,7 +50,7 @@ import List.Extra
 -}
 type Config graph function
     = Config
-        { graphToString : graph -> String
+        { graphTitle : graph -> String
         , functionToString : function -> String
 
         --
@@ -72,8 +72,10 @@ type Config graph function
         }
 
 
+{-| Initializes the benchmark configuration with some mandatory options.
+-}
 init :
-    { graphToString : graph -> String
+    { graphTitle : graph -> String
     , functionToString : function -> String
 
     --
@@ -93,7 +95,7 @@ init :
     -> Config graph function
 init config =
     Config
-        { graphToString = config.graphToString
+        { graphTitle = config.graphTitle
         , functionToString = config.functionToString
 
         --
@@ -110,31 +112,43 @@ init config =
         }
 
 
+{-| Sets a timeout (in ms) for each `Param`.
+-}
 withTimeout : Float -> Config graph function -> Config graph function
 withTimeout newTimeout (Config config) =
     Config { config | timeout = Just newTimeout }
 
 
+{-| Codec for graphs.
+-}
 graphCodec : Config graph function -> Codec graph
 graphCodec (Config config) =
     config.graphCodec
 
 
+{-| Codec for functions.
+-}
 functionCodec : Config graph function -> Codec function
 functionCodec (Config config) =
     config.functionCodec
 
 
-graphToString : Config graph function -> graph -> String
-graphToString (Config config) =
-    config.graphToString
+{-| Gets a graph title.
+-}
+graphTitle : Config graph function -> graph -> String
+graphTitle (Config config) =
+    config.graphTitle
 
 
+{-| Converts a function to a user-visible string.
+-}
 functionToString : Config graph function -> function -> String
 functionToString (Config config) =
     config.functionToString
 
 
+{-| Gets the list of all possible params to benchmark.
+-}
 params : Config graph function -> List (Param graph function)
 params (Config config) =
     config.graphs
@@ -156,11 +170,15 @@ params (Config config) =
             )
 
 
+{-| Gets the timeout (in ms) for each `Param`.
+-}
 timeout : Config graph function -> Maybe Float
 timeout (Config config) =
     config.timeout
 
 
+{-| Prepares a function for running inside a benchmark
+-}
 runFunction : Config graph function -> Param graph function -> () -> ()
 runFunction (Config config) =
     config.runFunction

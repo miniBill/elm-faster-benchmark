@@ -488,7 +488,7 @@ update config ports msg (Model model) =
                                         newResults : Dict GraphName (Dict FunctionName (Dict Int Stats))
                                         newResults =
                                             upsert
-                                                (Config.graphToString config param.graph)
+                                                (Config.graphTitle config param.graph)
                                                 (\graphDict ->
                                                     upsert_
                                                         (Config.functionToString config param.function)

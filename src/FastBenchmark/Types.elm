@@ -8,7 +8,7 @@ module FastBenchmark.Types exposing
 
 # Types
 
-@docs Config, Stats, Param
+@docs Stats, Param
 
 
 # Messages

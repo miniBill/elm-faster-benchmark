@@ -7,7 +7,7 @@ import FastBenchmark.Types exposing (Config, Param)
 
 config : Config Graph Function
 config =
-    { graphToString = graphToString
+    { graphTitle = graphTitle
     , graphCodec = graphCodec
     , functionToString = functionToString
     , functionCodec = functionCodec
@@ -32,8 +32,8 @@ graphs =
     [ Simple ]
 
 
-graphToString : Graph -> String
-graphToString graph =
+graphTitle : Graph -> String
+graphTitle graph =
     case graph of
         Simple ->
             "Simple comparison"
