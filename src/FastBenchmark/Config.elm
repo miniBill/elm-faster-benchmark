@@ -20,7 +20,7 @@ module FastBenchmark.Config exposing
 @docs init, withTimeout
 
 
-# Params
+# To params list
 
 @docs params
 
