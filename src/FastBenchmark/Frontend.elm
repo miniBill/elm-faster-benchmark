@@ -23,7 +23,7 @@ import Color exposing (Color)
 import Color.Oklch
 import Deque exposing (Deque)
 import Dict exposing (Dict)
-import Element exposing (Attribute, Element, alignBottom, alignTop, centerY, column, el, fill, height, paragraph, px, row, shrink, table, text, width, wrappedRow)
+import Element exposing (Attribute, Element, alignBottom, alignRight, alignTop, centerX, centerY, column, el, fill, height, paragraph, px, row, shrink, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Font as Font
 import FastBenchmark.Frontend.LinePlot
@@ -145,52 +145,88 @@ view (Model model) =
         workersLine : Element msg
         workersLine =
             text <| "Free workers: " ++ String.fromInt (WorkerQueue.freeCount model.workers)
+
+        ( statusText, button, bottom ) =
+            case model.runStatus of
+                LoadingParams ->
+                    ( "Loading param list..."
+                    , { label = text "Loading.."
+                      , onPress = Nothing
+                      }
+                    , Element.none
+                    )
+
+                Ready inputs ->
+                    ( "Will run with " ++ String.fromInt (List.length inputs.params) ++ " params"
+                    , { label = text "Start"
+                      , onPress = Just (Start inputs)
+                      }
+                    , Element.none
+                    )
+
+                Running inputs results ->
+                    ( "Running... " ++ viewPercentage inputs.params results
+                    , { label = text "Stop"
+                      , onPress = Just (Stop inputs results)
+                      }
+                    , viewResults results
+                    )
+
+                Finished inputs results ->
+                    ( "Done"
+                    , { label = text "Restart"
+                      , onPress = Just (Start inputs)
+                      }
+                    , viewResults results
+                    )
+
+                Stopped inputs results ->
+                    ( "Stopped at " ++ viewPercentage inputs.params results
+                    , { label = text "Restart"
+                      , onPress = Just (Start inputs)
+                      }
+                    , viewResults results
+                    )
+
+        left : Element msg
+        left =
+            column
+                [ Theme.padding
+                , Theme.spacing
+                , alignTop
+                ]
+                [ workersLine
+                , text statusText
+                ]
     in
-    column [ Theme.padding, Theme.spacing ] <|
-        case model.runStatus of
-            LoadingParams ->
-                [ workersLine
-                , text "Loading param list..."
-                ]
+    column
+        [ Theme.padding
+        , Theme.spacing
+        , width fill
+        ]
+        [ wrappedRow
+            [ Theme.padding
+            , Theme.spacing
+            , width fill
+            ]
+            [ left
+            , el [ centerX ] <| Theme.button [] button
+            , explainer
+            ]
+        , bottom
+        ]
 
-            Ready inputs ->
-                [ workersLine
-                , text <| "Will run with " ++ String.fromInt (List.length inputs.params) ++ " params"
-                , Theme.button []
-                    { label = text "Start"
-                    , onPress = Just (Start inputs)
-                    }
-                ]
 
-            Running inputs results ->
-                [ workersLine
-                , text <| "Running... " ++ viewPercentage inputs.params results
-                , Theme.button []
-                    { label = text "Stop"
-                    , onPress = Just (Stop inputs results)
-                    }
-                , viewResults results
-                ]
-
-            Finished inputs results ->
-                [ workersLine
-                , text "Done"
-                , Theme.button []
-                    { label = text "Restart"
-                    , onPress = Just (Start inputs)
-                    }
-                , viewResults results
-                ]
-
-            Stopped inputs results ->
-                [ workersLine
-                , text <| "Stopped at " ++ viewPercentage inputs.params results
-                , Theme.button []
-                    { label = text "Restart"
-                    , onPress = Just (Start inputs)
-                    }
-                , viewResults results
-                ]
+explainer : Element msg
+explainer =
+    column
+        [ Theme.padding
+        , Theme.spacing
+        , alignRight
+        ]
+        [ paragraph [] [ text "Times in the tables are in ms and for a single execution." ]
+        , paragraph [] [ text "The three numbers are min, median and max." ]
+        ]
 
 
 viewPercentage : List (Param graph function) -> Results -> String
@@ -287,8 +323,6 @@ viewGraph graphName graph =
         ]
         [ el [ Font.bold ] <| text graphName
         , linePlot
-        , paragraph [] [ text "Times (in ms) for a single execution." ]
-        , paragraph [] [ text "The three numbers are min, median and max." ]
         , viewTable graph toColor
         ]
 
