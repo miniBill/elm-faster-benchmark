@@ -123,7 +123,7 @@ doRun config try existing param =
             (\newResults ->
                 RunResult (try + 1)
                     param
-                    (Result.map ((++) existing) newResults)
+                    (Result.map (\new -> existing ++ new) newResults)
             )
 
 
