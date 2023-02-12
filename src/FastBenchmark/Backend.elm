@@ -114,13 +114,9 @@ isTooWide stats =
 doRun : Config graph function -> TryCount -> List Float -> Param graph function -> Cmd (Msg graph function)
 doRun config try existing param =
     let
-        function : () -> ()
-        function =
-            Config.runFunction config param
-
         operation : Benchmark.LowLevel.Operation
         operation =
-            Benchmark.LowLevel.operation function
+            Config.runFunction config param
     in
     FastBenchmark.Backend.Benchmark.run operation
         |> Task.attempt

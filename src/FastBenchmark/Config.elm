@@ -41,6 +41,7 @@ module FastBenchmark.Config exposing
 
 -}
 
+import Benchmark.LowLevel exposing (Operation)
 import Codec exposing (Codec)
 import FastBenchmark.Types exposing (Param)
 import List.Extra
@@ -179,6 +180,6 @@ timeout (Config config) =
 
 {-| Prepares a function for running inside a benchmark
 -}
-runFunction : Config graph function -> Param graph function -> () -> ()
-runFunction (Config config) =
-    config.runFunction
+runFunction : Config graph function -> Param graph function -> Operation
+runFunction (Config config) param =
+    Benchmark.LowLevel.operation (config.runFunction param)
