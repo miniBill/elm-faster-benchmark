@@ -3,7 +3,7 @@ module FastBenchmark.Config exposing
     , init, withTimeout
     , params
     , functionToString, graphToString
-    , timeout, toFunction
+    , timeout, runFunction
     , functionCodec, graphCodec
     )
 
@@ -32,7 +32,7 @@ module FastBenchmark.Config exposing
 
 # Other configuration
 
-@docs timeout, toFunction
+@docs timeout, runFunction
 
 
 # Codecs
@@ -51,15 +51,21 @@ import List.Extra
 type Config graph function
     = Config
         { graphToString : graph -> String
-        , graphCodec : Codec graph
         , functionToString : function -> String
+
+        --
+        , graphCodec : Codec graph
         , functionCodec : Codec function
 
         --
         , graphs : List graph
-        , functions : List function
-        , sizes : List Int
-        , toFunction : Param graph function -> (() -> ())
+        , graphData :
+            graph
+            ->
+                { functions : List function
+                , sizes : List Int
+                }
+        , runFunction : Param graph function -> (() -> ())
 
         --
         , timeout : Maybe Float
@@ -68,29 +74,36 @@ type Config graph function
 
 init :
     { graphToString : graph -> String
-    , graphCodec : Codec graph
     , functionToString : function -> String
+
+    --
+    , graphCodec : Codec graph
     , functionCodec : Codec function
 
     --
     , graphs : List graph
-    , functions : List function
-    , sizes : List Int
-    , toFunction : Param graph function -> (() -> ())
+    , graphData :
+        graph
+        ->
+            { functions : List function
+            , sizes : List Int
+            }
+    , runFunction : Param graph function -> (() -> ())
     }
     -> Config graph function
 init config =
     Config
         { graphToString = config.graphToString
-        , graphCodec = config.graphCodec
         , functionToString = config.functionToString
+
+        --
+        , graphCodec = config.graphCodec
         , functionCodec = config.functionCodec
 
         --
         , graphs = config.graphs
-        , functions = config.functions
-        , sizes = config.sizes
-        , toFunction = config.toFunction
+        , graphData = config.graphData
+        , runFunction = config.runFunction
 
         --
         , timeout = Nothing
@@ -124,16 +137,23 @@ functionToString (Config config) =
 
 params : Config graph function -> List (Param graph function)
 params (Config config) =
-    List.Extra.lift3
-        (\size graph function ->
-            { size = size
-            , graph = graph
-            , function = function
-            }
-        )
-        config.sizes
-        config.graphs
-        config.functions
+    config.graphs
+        |> List.concatMap
+            (\graph ->
+                let
+                    { functions, sizes } =
+                        config.graphData graph
+                in
+                List.Extra.lift2
+                    (\function size ->
+                        { graph = graph
+                        , function = function
+                        , size = size
+                        }
+                    )
+                    functions
+                    sizes
+            )
 
 
 timeout : Config graph function -> Maybe Float
@@ -141,6 +161,6 @@ timeout (Config config) =
     config.timeout
 
 
-toFunction : Config graph function -> Param graph function -> () -> ()
-toFunction (Config config) =
-    config.toFunction
+runFunction : Config graph function -> Param graph function -> () -> ()
+runFunction (Config config) =
+    config.runFunction

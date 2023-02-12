@@ -3,7 +3,8 @@ module ToBenchmark exposing (Function, Graph, Overlap, Ratio, config)
 import Codec exposing (Codec)
 import Dict exposing (Dict)
 import DictDotDot as DDD
-import FastBenchmark.Types exposing (Config, Param)
+import FastBenchmark.Config exposing (Config)
+import FastBenchmark.Types exposing (Param)
 import FastIntersect
 import List.Extra
 import Random
@@ -11,16 +12,20 @@ import Random
 
 config : Config Graph Function
 config =
-    { graphToString = graphToString
-    , graphCodec = graphCodec
-    , functionToString = functionToString
-    , functionCodec = functionCodec
-    , graphs = graphs
-    , functions = functions
-    , sizes = sizes
-    , toFunction = toFunction
-    , timeout = timeout
-    }
+    FastBenchmark.Config.init
+        { graphToString = graphToString
+        , graphCodec = graphCodec
+        , functionToString = functionToString
+        , functionCodec = functionCodec
+        , graphs = graphs
+        , graphData =
+            \_ ->
+                { functions = functions
+                , sizes = sizes
+                }
+        , runFunction = runFunction
+        }
+        |> FastBenchmark.Config.withTimeout timeout
 
 
 type alias Graph =
@@ -139,9 +144,9 @@ functionCodec =
 
 {-| Timeout, in milliseconds
 -}
-timeout : Maybe number
+timeout : number
 timeout =
-    Just 3
+    3
 
 
 graphs : List Graph
@@ -213,8 +218,8 @@ generate size =
         |> Tuple.first
 
 
-toFunction : Param Graph Function -> (() -> ())
-toFunction { graph, function, size } =
+runFunction : Param Graph Function -> (() -> ())
+runFunction { graph, function, size } =
     let
         ( lratio, rratio ) =
             graph.ratio

@@ -116,7 +116,7 @@ doRun config try existing param =
     let
         function : () -> ()
         function =
-            Config.toFunction config param
+            Config.runFunction config param
 
         operation : Benchmark.LowLevel.Operation
         operation =
