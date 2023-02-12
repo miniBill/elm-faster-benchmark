@@ -61,7 +61,7 @@ type alias TryCount =
 
 maxTries : TryCount
 maxTries =
-    5
+    10
 
 
 {-| A convenient type for a backend `Program`.
