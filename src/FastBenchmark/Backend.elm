@@ -51,8 +51,17 @@ params config =
 -}
 type Msg graph function
     = FromFrontend (ToBackend graph function)
-    | RunResult (Param graph function) (Result String (List Float))
+    | RunResult TryCount (Param graph function) (Result String (List Float))
     | Nop
+
+
+type alias TryCount =
+    Int
+
+
+maxTries : TryCount
+maxTries =
+    5
 
 
 {-| A convenient type for a backend `Program`.
@@ -92,28 +101,47 @@ toCmd config ports msg =
             Cmd.none
 
         FromFrontend (TBRun param) ->
-            let
-                function : () -> ()
-                function =
-                    config.toFunction param
+            doRun config 0 [] param
 
-                operation : Benchmark.LowLevel.Operation
-                operation =
-                    Benchmark.LowLevel.operation function
-            in
-            FastBenchmark.Backend.Benchmark.run operation
-                |> Task.attempt (RunResult param)
-
-        RunResult param (Ok res) ->
+        RunResult try param (Ok res) ->
             let
                 stats : Stats
                 stats =
                     FastBenchmark.Backend.Benchmark.computeStatistics res
             in
-            sendToFrontend config ports (TFResult param (Ok stats))
+            if try < maxTries && isTooWide stats then
+                doRun config try res param
 
-        RunResult param (Err e) ->
+            else
+                sendToFrontend config ports (TFResult param (Ok stats))
+
+        RunResult _ param (Err e) ->
             sendToFrontend config ports (TFResult param (Err e))
+
+
+isTooWide : Stats -> Bool
+isTooWide stats =
+    abs (stats.max - stats.min) > (stats.median * 0.1)
+
+
+doRun : Config graph function -> TryCount -> List Float -> Param graph function -> Cmd (Msg graph function)
+doRun config try existing param =
+    let
+        function : () -> ()
+        function =
+            config.toFunction param
+
+        operation : Benchmark.LowLevel.Operation
+        operation =
+            Benchmark.LowLevel.operation function
+    in
+    FastBenchmark.Backend.Benchmark.run operation
+        |> Task.attempt
+            (\newResults ->
+                RunResult (try + 1)
+                    param
+                    (Result.map ((++) existing) newResults)
+            )
 
 
 subscriptions : Config graph function -> Ports (Msg graph function) -> Sub (Msg graph function)
