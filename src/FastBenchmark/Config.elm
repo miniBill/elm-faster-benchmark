@@ -1,9 +1,9 @@
 module FastBenchmark.Config exposing
     ( Config
-    , init, withTimeout
+    , init, withTimeout, withRetry
     , params
     , functionToString, graphTitle
-    , timeout, runFunction
+    , timeout, retry, runFunction
     , functionCodec, graphCodec
     )
 
@@ -17,7 +17,7 @@ module FastBenchmark.Config exposing
 
 # Building configuration
 
-@docs init, withTimeout
+@docs init, withTimeout, withRetry
 
 
 # To params list
@@ -32,7 +32,7 @@ module FastBenchmark.Config exposing
 
 # Other configuration
 
-@docs timeout, runFunction
+@docs timeout, retry, runFunction
 
 
 # Codecs
@@ -70,6 +70,7 @@ type Config graph function
 
         --
         , timeout : Maybe Float
+        , retry : Maybe { times : Int, percentage : Float }
         }
 
 
@@ -110,6 +111,7 @@ init config =
 
         --
         , timeout = Nothing
+        , retry = Nothing
         }
 
 
@@ -118,6 +120,16 @@ init config =
 withTimeout : Float -> Config graph function -> Config graph function
 withTimeout newTimeout (Config config) =
     Config { config | timeout = Just newTimeout }
+
+
+{-| Try running the benchmark more times (up to `times`) if `max - min` would be more than `percentage * median`.
+
+Reasonable values are `5` for `times` and `0.5` for `percentage`.
+
+-}
+withRetry : { times : Int, percentage : Float } -> Config graph function -> Config graph function
+withRetry r (Config config) =
+    Config { config | retry = Just r }
 
 
 {-| Codec for graphs.
@@ -176,6 +188,13 @@ params (Config config) =
 timeout : Config graph function -> Maybe Float
 timeout (Config config) =
     config.timeout
+
+
+{-| Gets the retry configuration.
+-}
+retry : Config graph function -> Maybe { times : Int, percentage : Float }
+retry (Config config) =
+    config.retry
 
 
 {-| Prepares a function for running inside a benchmark

@@ -46,11 +46,6 @@ type alias TryCount =
     Int
 
 
-maxTries : TryCount
-maxTries =
-    10
-
-
 {-| A convenient type for a backend `Program`.
 -}
 type alias Program graph function =
@@ -88,27 +83,31 @@ toCmd config ports msg =
             Cmd.none
 
         FromFrontend (TBRun param) ->
-            doRun config 0 [] param
+            doRun config 1 [] param
 
         RunResult try param (Ok res) ->
             let
                 stats : Stats
                 stats =
                     FastBenchmark.Backend.Benchmark.computeStatistics res
+
+                shouldRetry : Bool
+                shouldRetry =
+                    case Config.retry config of
+                        Nothing ->
+                            False
+
+                        Just { times, percentage } ->
+                            try < times && abs (stats.max - stats.min) > (stats.median * percentage)
             in
-            if try < maxTries && isTooWide stats then
-                doRun config try res param
+            if shouldRetry then
+                doRun config (try + 1) res param
 
             else
                 sendToFrontend config ports (TFResult param (Ok stats))
 
         RunResult _ param (Err e) ->
             sendToFrontend config ports (TFResult param (Err e))
-
-
-isTooWide : Stats -> Bool
-isTooWide stats =
-    abs (stats.max - stats.min) > (stats.median * 0.1)
 
 
 doRun : Config graph function -> TryCount -> List Float -> Param graph function -> Cmd (Msg graph function)
@@ -121,7 +120,7 @@ doRun config try existing param =
     FastBenchmark.Backend.Benchmark.run operation
         |> Task.attempt
             (\newResults ->
-                RunResult (try + 1)
+                RunResult try
                     param
                     (Result.map (\new -> existing ++ new) newResults)
             )
