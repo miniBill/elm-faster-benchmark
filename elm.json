@@ -3,7 +3,7 @@
     "name": "miniBill/elm-faster-benchmark",
     "summary": "Library for faster benchmarks by using Web Workers",
     "license": "BSD-3-Clause",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "exposed-modules": [
         "FastBenchmark.Frontend",
         "FastBenchmark.Backend",
@@ -28,4 +28,3 @@
     },
     "test-dependencies": {}
 }
-
