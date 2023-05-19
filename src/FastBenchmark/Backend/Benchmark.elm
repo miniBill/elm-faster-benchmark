@@ -35,15 +35,10 @@ run operation =
                     batchCount : Int
                     batchCount =
                         min sampleSize 100
-
-                    batchSize : Int
-                    batchSize =
-                        (sampleSize + 99) // 100
                 in
-                List.range 0 batchCount
-                    |> List.map (\_ -> Benchmark.LowLevel.sample batchSize operation)
+                List.range 1 batchCount
+                    |> List.map (\_ -> Benchmark.LowLevel.sample 1 operation)
                     |> Task.sequence
-                    |> Task.map (List.map (\totalDuration -> totalDuration / toFloat batchSize))
             )
         |> Task.mapError
             (\e ->
